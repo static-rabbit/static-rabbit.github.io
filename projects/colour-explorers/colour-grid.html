@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="shortcut icon" href="https://www.google.com/s2/favicons?sz=64&domain=colourlovers.com/" />
+	<title>Colour Explorer - Grid</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe" crossorigin="anonymous">
+	<script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL" crossorigin="anonymous"></script>
+	<link rel="stylesheet" href="styles.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Iosevka/6.0.0/iosevka/iosevka.min.css">
+	<style>
+		body{font-family: "Iosevka Web", ui-monospace, monospace;}
+		td{font-size: 0.8rem; vertical-align: top;}
+	</style>
+</head>
+
+<body>
+<div class="container-fluid">
+	<hr>
+	<h1>Colour Explorer - Grid</h1>
+	<nav aria-label="breadcrumb" style="border-bottom:1px solid #ccc; border-top:1px solid #ccc; margin-bottom: 10px;"">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a class="breadcrumb-link" href="index.html">Home</a>
+			</li>
+			<li class="breadcrumb-divider">/</li>
+			<li class="breadcrumb-item">
+				<a class="breadcrumb-link" href="#">Colour Explorer - Grid</a>
+			</li>
+		</ol>
+	</nav>
+	<p>Explore colours from a range of sources - uses the <a href="https://github.com/meodai/color-name-api">Color Name API</a> developed by <a href="https://github.com/meodai">meodai</a> / <a href="https://elastiq.ch/">David Aerne - Computational Designer</a> (who wrote <a href="https://www.color.pizza/">color.pizza</a> and <a href="https://names.color.pizza/">names.color.pizza</a>).</p>
+	<hr>
+	<div class="row">
+		<div class="col-2">
+			<div class="sticky-top">
+				<hr>
+				<div id="panelContainer"></div>
+				<hr>
+			</div>
+		</div>
+		<div class="col-10 mt-3" id="mainContent">
+			<!-- Information about the chosen list. JavaScript fills these in. -->
+			<ul id="listData">
+				<li>Click colour to copy its hex value</li>
+				<li id="currentList"></li>
+				<li id="currentListDescription"></li>
+				<li id="currentListSource"></li>
+			</ul>
+			<hr>
+			<button class="btn-solid theme-primary" type="button" data-bs-toggle="menu" aria-expanded="false">Choose Explorer Version</button>
+			<div class="menu">
+				<a class="menu-item active" href="colour-grid.html">Grid</a>
+				<a class="menu-item" href="colour-table.html">Table</a>
+			</div>
+			<hr>
+			<div class="flex1 flex1-wrap" id="colourData"></div>
+		</div>
+	</div>
+	<hr>
+	<p><a href="https://getbootstrap.com/" rel="nofollow">Bootstrap</a> | <a href="https://tweakpane.org/" rel="nofollow">Tweakpane</a> | <a href="https://clipboardjs.com/" rel="nofollow">Clipboard.js</a></p>
+	<hr>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script type="module">
+
+import { Pane } from "https://esm.sh/tweakpane";
+
+const pane = new Pane({ expanded: true, container: document.getElementById('panelContainer') });
+
+let clickArray = [];
+
+const SETTINGS = {
+	filterList: '',
+	colourSize: 150,
+	padding: 5,
+	margin:5,
+	rotate: 0,
+	border: false,
+	borderRadius: 0,
+	colourBackground: '#f1f1f1',
+	design: 'html',
+	display: 'displayGridList'
+};
+
+const folderGeneral = pane.addFolder({
+	title: '🟡 General',
+	expanded: true,
+});
+
+function init(){
+
+	Array.from(document.getElementsByClassName('colour')).forEach((colour) => {
+		colour.style.setProperty('padding', `${SETTINGS.padding}px`);
+		colour.style.setProperty('margin', `${SETTINGS.margin}px`);
+		colour.style.setProperty('rotate', `${SETTINGS.rotate}deg`);
+		colour.style.setProperty('background', `${SETTINGS.colourBackground}`);
+		if(`${SETTINGS.border}` === 'true') {
+			colour.style.setProperty('border-right', `1px solid #ccc`);
+			colour.style.setProperty('border-bottom', `1px solid #ccc`);
+		} else if(`${SETTINGS.border}` === 'false') {
+			colour.style.setProperty('border-right', `0px`);
+			colour.style.setProperty('border-bottom', `0px`);
+		}
+		colour.style.setProperty('border-radius', `${SETTINGS.borderRadius}px`);
+	});
+
+	// the colour swatch is a block whose width/height is the `size` setting
+	Array.from(document.getElementsByClassName('spanForcolour')).forEach((swatch) => {
+		swatch.style.setProperty('display', 'block');
+		swatch.style.setProperty('width', `${SETTINGS.colourSize}px`);
+		swatch.style.setProperty('height', `${SETTINGS.colourSize}px`);
+		swatch.style.setProperty('border-radius', `${SETTINGS.borderRadius}px`);
+	});
+}
+
+folderGeneral.addBinding(SETTINGS, 'filterList', { label: 'filter' });
+folderGeneral.addBinding(SETTINGS, 'colourSize', { min: 20, max: 1000, step: 1, label: 'size' }).on('change', () => init());
+folderGeneral.addBinding(SETTINGS, 'padding', { min: 0, max: 250, step: 1, label: 'padding' }).on('change', () => init());
+folderGeneral.addBinding(SETTINGS, 'margin', { min: 0, max: 250, step: 1, label: 'margin' }).on('change', () => init());
+folderGeneral.addBinding(SETTINGS, 'rotate', { min: 0, max: 360, step: 1, label: 'rotate' }).on('change', () => init());
+folderGeneral.addBinding(SETTINGS, 'border').on('change', () => init());
+folderGeneral.addBinding(SETTINGS, 'borderRadius', { min: 0, max: 300, step: 1, label: 'border-radius' }).on('change', () => init());
+folderGeneral.addBinding(SETTINGS, 'colourBackground', { label: 'colourbg' }).on('change', () => init());
+
+/*
+-------------------------
+ display folder
+ -------------------------
+*/
+
+const folderDisplay = pane.addFolder({
+	title: '🟡 Display Options',
+	expanded: true,
+});
+
+folderDisplay.addBinding(SETTINGS, 'display', { label: 'display', options: {
+	'grid': 'displayGrid' ,
+	'grid & info': 'displayGridInfo',
+	'grid & name': 'displayGridList',
+	'list & info': 'displayInfo',
+	'list & name': 'displayList'
+	}
+}).on('change', () => displayGridList(SETTINGS['display']));
+
+// ###############################################################
+// Colour lists API (populates the `design` list)
+// ###############################################################
+
+const getId = (id) => document.getElementById(id);
+const API = "https://api.color.pizza/v1/";
+const DEFAULT_LIST = "html";
+const REFERRER = "colour-explorer";
+const HEADERS = {
+	"X-Referrer": REFERRER
+};
+
+async function apiReturnLists() {
+	const response = await fetch(API + "lists/", {
+		headers: HEADERS
+	});
+	if (!response.ok) throw new Error("HTTP " + response.status);
+	const data = await response.json(); // {availableColorNameLists, listDescriptions}
+	return data;
+}
+
+// Build the Tweakpane options object ({ label: value }) from the API data,
+// using the same "Title (count)" label format as the colour list <select>
+function buildDesignOptions(data) {
+	const options = {};
+	const listKeys = [...data.availableColorNameLists];
+	const listDescriptions = data.listDescriptions;
+	listKeys.forEach((key) => {
+		const d = listDescriptions[key];
+		const optCount = (d.colorCount).toLocaleString();
+		options[d.title + " (" + optCount + ")"] = key;
+	});
+	return options;
+}
+
+let designOptions;
+let listDescriptions = {}; // details (title, description, source) for each list, keyed by list name
+try {
+	const dataApiLists = await apiReturnLists();
+	designOptions = buildDesignOptions(dataApiLists);
+	listDescriptions = dataApiLists.listDescriptions;
+} catch (error) {
+	console.error("Failed to load colour lists:", error);
+	designOptions = { 'HTML': 'html' };
+	SETTINGS.design = 'html';
+}
+
+folderDisplay.addBinding(SETTINGS, 'design', { label: 'design', options: designOptions
+}).on('change', () => {
+	updateListData(listDescriptions, SETTINGS['design']);
+	displayDesign(SETTINGS['design']);
+});
+
+var clipboard = new ClipboardJS('.colour');
+
+// ###############################################################
+// Assign variables from document
+// ###############################################################
+
+const divMainContent = document.getElementById("mainContent");
+const divcolourData = document.getElementById("colourData");
+
+// ###############################################################
+// List information (ul#listData)
+// ###############################################################
+
+const currentList = document.getElementById("currentList");
+const currentListDescription = document.getElementById("currentListDescription");
+const currentListSource = document.getElementById("currentListSource");
+
+/**
+ * Shows the title, description and source link of the chosen list.
+ * textContent (plain text) is used rather than innerHTML so that any HTML
+ * in the API data is displayed as text, not run.
+ */
+function updateListData(listDescriptions, selected) {
+	// Nothing to show if the lists failed to load or the key is unknown
+	if (!listDescriptions || !listDescriptions[selected]) {
+		currentList.textContent = "";
+		currentListDescription.textContent = "";
+		currentListSource.replaceChildren();
+		return;
+	}
+
+	const { title, description, source } = listDescriptions[selected];
+
+	currentList.textContent = "List Name: " + title;
+	currentListDescription.textContent = "List Description: " + description;
+
+	// Build the source link piece by piece
+	const sourceLink = document.createElement("a");
+	sourceLink.href = source;
+	sourceLink.target = "_blank";            // open in a new tab
+	sourceLink.rel = "noopener noreferrer";  // security best practice for new-tab links
+	sourceLink.textContent = source;
+
+	// Replace whatever is in the <li> with: "List Source: " + the link
+	currentListSource.replaceChildren(document.createTextNode("List Source: "), sourceLink);
+}
+
+// ###############################################################
+// Colours API (adapted from apiReturnColours in colour-grid-000002)
+// ###############################################################
+
+function escapeHtml(value) {
+	return String(value)
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
+}
+
+// Fetches the colours for a list and returns the HTML for the grid tiles
+async function apiReturnColours(list){
+	const response = await fetch(API + "?noduplicates=true&list=" + encodeURIComponent(list), {
+		headers: HEADERS
+	});
+	if (!response.ok) throw new Error("HTTP " + response.status);
+	const data = await response.json();
+	const colours = data.colors;
+	console.log({colours});
+	let concatHtml = "";
+	for(let i = 0; i < colours.length; i++){
+		const colourName = escapeHtml(colours[i].name);
+		const colourHex = escapeHtml(colours[i].hex);
+		const colourTitle = (colourName + " " + colourHex).toLowerCase();
+		let colourTextDetails = "<ul class='list-unstyled'>";
+		colourTextDetails += "<li class='fs-6'>Colour Name: <b>" + colourName + "</b></li>\n";
+		colourTextDetails += "<li class='fs-6'>Hex: <b>" + colourHex + "</b></li>\n";
+		colourTextDetails += "</ul>";
+		concatHtml += "<div class='colour row' title='" + colourTitle + "' data-name='" + colourName + "' data-hex='" + colourHex + "' data-clipboard-text='" + colourHex + "'>";
+		concatHtml += "	<div class='empty' data-clipboard-text='" + colourHex + "'>";
+		concatHtml += "	<span class='spanForcolour' data-hex='" + colourHex + "' style='background-color:" + colourHex + ";'></span> ";
+		concatHtml += "	<span class='spanForcolourTextInfo hidden'>" + colourTextDetails + "</span>";
+		concatHtml += "	<span class='spanForcolourTextList fs-6 hidden'>" + colourName + "</span>";
+		concatHtml += "	</div>";
+		concatHtml += "</div>";
+	}
+	return concatHtml;
+}
+
+// ###############################################################
+// Set HTML content for Divs
+// ###############################################################
+
+function setContent(concatHtml) {
+	divcolourData.innerHTML = concatHtml;
+	init();
+	// keep the currently selected display mode (grid / info / name / list)
+	displayGridList(SETTINGS['display']);
+}
+
+// ###############################################################
+// Grid / List
+// ###############################################################
+
+function displayGridList(mode){
+	
+	// get colours (in an Object)
+	const colours = document.getElementsByClassName("colour");
+
+	// convert colours Object to an Array
+	const colourArray = Object.entries(colours);
+
+	colourArray.map(colour=>{
+		const thiscolour = colour[1];
+		if(mode === "displayGrid") {
+			if(!thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.contains('hidden')){
+				thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.add("hidden");
+			}
+			if(!thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.contains('hidden')){
+				thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.add("hidden");
+			}
+		} else if (mode === "displayGridInfo") {
+			if(!thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.contains('hidden')){
+				thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.add("hidden");
+			}
+			if(thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.contains('hidden')){
+				thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.remove("hidden");
+			}
+		} else if (mode === "displayGridList") {
+			if(thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.contains('hidden')){
+				thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.remove("hidden");
+			}
+			if(!thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.contains('hidden')){
+				thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.add("hidden");
+			}
+		} else if (mode === "displayInfo") {
+			if(!thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.contains('hidden')){
+				thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.add("hidden");
+			}
+			if(thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.contains('hidden')){
+				thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.remove("hidden");
+			}
+		} else if (mode === "displayList") {
+			if(thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.contains('hidden')){
+				thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.remove("hidden");
+			}
+			if(!thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.contains('hidden')){
+				thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.add("hidden");
+			}
+		}
+	})
+
+	// set flex classes
+	// ------------------------
+
+	if(mode === "displayGrid" || mode === "displayGridInfo" || mode === "displayGridList") {
+		if(!divcolourData.classList.contains("flex1")){
+			divcolourData.classList.add("flex1");
+		}
+		if(!divcolourData.classList.contains("flex1-wrap")){
+			divcolourData.classList.add("flex1-wrap");
+		}
+	} else {
+
+
+		divcolourData.classList.remove("flex1");
+		divcolourData.classList.remove("flex1-wrap");
+
+	}
+
+}
+
+
+// ###############################################################
+// Design
+// ###############################################################
+
+// How to get parent multiple levels up the DOM tree without jQuery or modifying Element.prototype?
+// https://stackoverflow.com/a/65708136
+
+function getParentNode(element, level = 1) { // 1 - default value (if no 'level' parameter is passed to the function)
+    while (level-- > 0) {
+      element = element.parentNode;
+      if (!element) return null; // to avoid a possible "TypeError: Cannot read property 'parentNode' of null" if the requested level is higher than document
+    }
+    return element;
+}
+
+let designRequest = 0; // guards against out-of-order responses when switching lists quickly
+
+async function displayDesign(design){
+	const thisRequest = ++designRequest;
+	try {
+		const html = await apiReturnColours(design);
+		if (thisRequest !== designRequest) return; // a newer selection has superseded this one
+		setContent(html);
+	} catch (error) {
+		console.error("Failed to load colours for the selected list:", error);
+		if (thisRequest !== designRequest) return;
+		divcolourData.innerHTML = "<p class='text-danger'>Failed to load colours for the selected list.</p>";
+	}
+}
+
+// page load first time
+updateListData(listDescriptions, SETTINGS['design']);
+await displayDesign(SETTINGS['design']);
+
+// ###############################################################
+// colour text filter
+// ###############################################################
+
+document.querySelectorAll('.tp-txtv_i')[0].addEventListener('keyup', function (e) {
+	e.stopPropagation();
+	const searchVal = this.value.toLowerCase();
+	const filterItems = document.querySelectorAll('[title]');
+	if (searchVal !== '') {
+		filterItems.forEach(el => el.classList.add('hidden'));
+		document.querySelectorAll(`[title*="${searchVal}"]`).forEach(el => el.classList.remove('hidden'));
+	} else {
+		filterItems.forEach(el => el.classList.remove('hidden'));
+	}
+});
+
+</script>
+
+</body>
+
+</html>

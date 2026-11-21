@@ -1,0 +1,589 @@
+<!doctype html>
+<!--
+	COLOUR EXPLORER
+	=========================
+	What this page does:
+	  1. Asks the Color Name API for the list of available colour lists.
+	  2. Fills a drop-down menu with those lists.
+	  3. Downloads the colours for the chosen list and shows them in a
+	     searchable, sortable table (using a library called DataTables).
+	  4. Lets you export the table (Excel, CSV, copy) and show/hide columns.
+-->
+<html lang="en">
+
+<head>
+	<meta charset="utf-8" />
+	<!-- Makes the page scale properly on phones -->
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<link rel="shortcut icon" href="https://www.google.com/s2/favicons?sz=64&domain=thegridmaker.com/" />
+	<title>Colour Explorer - Table</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Iosevka/6.0.0/iosevka/iosevka.min.css">
+	<style>
+		body{font-family: "Iosevka Web", ui-monospace, monospace;}
+		td{font-size: 0.8rem; vertical-align: top;}
+	</style>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe" crossorigin="anonymous">
+	<link href="https://cdn.datatables.net/3.1.3/css/dataTables.dataTables.css" rel="stylesheet" type="text/css" />
+	<link href="https://cdn.datatables.net/buttons/4.1.2/css/buttons.dataTables.css" rel="stylesheet" type="text/css" />
+	<script defer src="https://cdn.datatables.net/3.1.3/js/dataTables.js"></script>
+	<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+	<script defer src="https://cdn.datatables.net/buttons/4.1.2/js/dataTables.buttons.js"></script>
+	<script defer src="https://cdn.datatables.net/buttons/4.1.2/js/buttons.html5.js"></script>
+	<script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL" crossorigin="anonymous"></script>
+</head>
+
+<body>
+	<div class="container-fluid">
+		<hr>
+		<h1>Colour Explorer - Table</h1>
+	<nav aria-label="breadcrumb" style="border-bottom:1px solid #ccc; border-top:1px solid #ccc; margin-bottom: 10px;"">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a class="breadcrumb-link" href="index.html">Home</a>
+			</li>
+			<li class="breadcrumb-divider">/</li>
+			<li class="breadcrumb-item">
+				<a class="breadcrumb-link" href="#">Colour Explorer - Table</a>
+			</li>
+		</ol>
+	</nav>
+		<p>Explore colours from a range of sources - uses the <a href="https://github.com/meodai/color-name-api">Color Name API</a> developed by <a href="https://github.com/meodai">meodai</a> / <a href="https://elastiq.ch/">David Aerne - Computational Designer</a> (who wrote <a href="https://www.color.pizza/">color.pizza</a> and <a href="https://names.color.pizza/">names.color.pizza</a>).</p>
+		<hr>
+		<button class="btn-solid theme-primary" type="button" data-bs-toggle="menu" aria-expanded="false">Choose Explorer Version</button>
+		<div class="menu">
+			<a class="menu-item" href="colour-grid.html">Grid</a>
+			<a class="menu-item active " href="colour-table.html">Table</a>
+		</div>
+		<hr>
+		<!-- The drop-down menu. JavaScript fills it with options later. -->
+		<div class="alert theme-accent" role="alert">
+			<div class="form-field">
+				<!-- "for" must match the select's id so clicking the label focuses the menu -->
+				<label class="form-label" for="list">Colour list</label>
+				<select id="list" class="form-control">
+					<option>Loading…</option>
+				</select>
+			</div>
+		</div>
+		<hr>
+		<!-- Information about the chosen list. JavaScript fills these in. -->
+		<ul id="listData">
+			<li id="currentList"></li>
+			<li id="currentListDescription"></li>
+			<li id="currentListSource"></li>
+		</ul>
+		<button type="button" class="btn-solid theme-primary" commandfor="invokerDialog" command="show-modal">
+			Table Info
+		</button>
+		<dialog class="dialog dialog-lg" id="invokerDialog">
+			<div class="dialog-header">
+				<h1 class="dialog-title">Additional Information</h1>
+				<button type="button" class="btn-close" commandfor="invokerDialog" command="close" aria-label="Close"></button>
+			</div>
+			<div class="dialog-body">
+				<!-- Help text explaining each column -->
+				<ul>
+					<li>Click on the <code>Column visibility</code> button to show/hide columns.</li>
+					<li>Columns:
+						<ul>
+							<li>Colour: <span class="fg-emphasis-primary">Colour Name</span></li>
+							<li>Hex: <span class="fg-emphasis-primary"><a href="https://en.wikipedia.org/wiki/Web_colors">Hexadecimal value</a></span></li>
+							<li>Description: <span class="fg-emphasis-primary">Colour description, as returned by the <a href="https://github.com/meodai/color-name-api">Color Name API</a></span></li>
+							<li>Luminance: <span class="fg-emphasis-primary">Measure to describe the perceived brightness of a color ("luminance, or visually perceived brightness")</span></li>
+							<li>luminanceWCAG: <span class="fg-emphasis-primary">The relative brightness of any point in a colorspace, normalized to 0 for darkest black and 1 for lightest white</span></li>
+							<li>RGB: <span class="fg-emphasis-primary">The <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/rgb">rgb()</a> functional notation expresses a color in the sRGB color space according to its red, green, and blue components. An optional alpha component represents the color's transparency.</span></li>
+							<li>HSL: <span class="fg-emphasis-primary">The <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/hsl">hsl()</a> functional notation expresses a color in the sRGB color space according to its hue, saturation, and lightness components. An optional alpha component represents the color's transparency.</span></li>
+							<li>LAB: <span class="fg-emphasis-primary">The <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/lab">lab()</a> functional notation expresses a given color in the CIE L*a*b* color space. Lab represents the entire range of colors that humans can see by specifying the color's lightness, a red/green axis value, a blue/yellow axis value, and an optional alpha transparency value.</span></li>
+						</ul>
+					</li>
+				</ul>
+			</div>
+			<div class="dialog-footer">
+				<button type="button" class="btn-solid theme-secondary" commandfor="invokerDialog" command="close">Close</button>
+			</div>
+		</dialog>
+		<!-- The table. We only define the header here; DataTables builds the rows. -->
+		<table id="colours" class="display cell-border compact nowrap row-border stripe">
+			<thead>
+				<tr>
+					<th>Colour</th>
+					<th>Hex</th>
+					<th>Description</th>
+					<th>Luminance</th>
+					<th>luminanceWCAG</th>
+					<th>RGB</th>
+					<th>HSL</th>
+					<th>LAB</th>
+					<th>Cat</th>
+					<th>Cat Description</th>
+					<th>Cat Source</th>
+				</tr>
+			</thead>
+			<!-- No <tbody> needed: DataTables creates one for us -->
+		</table>
+		<hr>
+		<p><a href="https://getbootstrap.com/" rel="nofollow">Bootstrap</a></p>
+		<hr>
+	</div>
+
+<!--
+	type="module" gives us modern JavaScript features, including top-level
+	"await". Module scripts are deferred automatically, so they run after the
+	page AND the deferred library scripts above have loaded.
+-->
+<script type="module">
+
+/* ============================================================
+   1. SETTINGS (constants never change, so we name them once)
+   ============================================================ */
+
+// The base web address of the API (the service that gives us colour data)
+const API = "https://api.color.pizza/v1/";
+
+// Which list to show when the page first opens
+const DEFAULT_LIST = "html";
+
+// Extra information sent with every request. The API author asks apps to say
+// who they are via this header, which helps them see how the API is used.
+const HEADERS = { "X-Referrer": "colour-explorer" };
+
+// A tiny helper: shorter way to find an element on the page by its id.
+//
+// SHORTHAND EXPLAINED - the "arrow function":
+// This is the same as writing the longer, traditional version:
+//     function getId(id) {
+//         return document.getElementById(id);
+//     }
+// Reading the arrow version left to right:
+//     (id)  =>  document.getElementById(id)
+//     ^^^^      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//     the input   the result that gets handed back
+// Because the function body is a single expression with no { } braces,
+// JavaScript automatically returns that result - no "return" keyword needed.
+// Usage example: getId("list") finds the element whose id is "list".
+const getId = (id) => document.getElementById(id);
+
+// Find the page elements we use often ONCE, instead of searching the page
+// again every time we need them (searching the page is slow-ish).
+const listSelect = getId("list");
+const currentList = getId("currentList");
+const currentListDescription = getId("currentListDescription");
+const currentListSource = getId("currentListSource");
+
+
+/* ============================================================
+   2. STATE (variables that change while the page is running)
+   ============================================================ */
+
+// Will hold the DataTable once it has been created.
+let coloursTable;
+
+// Details of the currently selected list (title, description, source).
+// updateListData fills this in, and the three "Category" columns read from
+// it. It lives here because those values belong to the whole list, not to
+// each individual colour returned by the API.
+let currentListInfo = { title: "", description: "", source: "" };
+
+// Makes text safe to place inside HTML (used for the source link below).
+const escapeHtml = (text) =>
+	text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
+
+// A "Map" is a store of key -> value pairs. We save each list's colours here
+// the first time we download them. If you switch back to a list you have
+// already seen, we reuse the saved copy instead of downloading it again.
+const coloursCache = new Map();
+
+// Remembers the download currently in progress, so we can cancel it if the
+// user picks a different list before it finishes.
+let currentRequest;
+
+
+/* ============================================================
+   3. TALKING TO THE API
+   ============================================================ */
+
+/**
+ * Downloads JSON data from a web address.
+ * "async" means the function takes time, so it hands back a "Promise"
+ * (a placeholder for a result that will arrive later).
+ * "await" pauses inside the function until the download finishes.
+ * @param {string} url     the address to fetch
+ * @param {AbortSignal} [signal] optional, lets us cancel the download
+ */
+async function fetchJson(url, signal) {
+	// SHORTHAND EXPLAINED - "property shorthand":
+	// { headers: HEADERS, signal } is a settings object with two items.
+	// The first is written in full:  headers: HEADERS  (name: value).
+	// The second, "signal", is a shortcut. When the name of the setting and
+	// the name of the variable holding its value are the SAME, you can write
+	// the name once. So "signal" is exactly the same as "signal: signal".
+	const response = await fetch(url, { headers: HEADERS, signal });
+	// response.ok is false for errors such as 404 (not found) or 500 (server error)
+	//
+	// SHORTHAND EXPLAINED - "if" without braces:
+	// When an "if" has only ONE statement to run, the { } braces can be left
+	// out. This is the same as:
+	//     if (!response.ok) {
+	//         throw new Error("HTTP " + response.status);
+	//     }
+	// The "!" means "not", so this reads: "if the response is NOT ok, stop
+	// and report an error". "throw" jumps out of the function with an error.
+	if (!response.ok) throw new Error("HTTP " + response.status);
+	return response.json(); // turn the text the server sent into a JavaScript object
+}
+
+/**
+ * Gets the available lists and their descriptions.
+ *
+ * SHORTHAND EXPLAINED - an arrow function with no inputs:
+ * The empty brackets () mean "this function takes no inputs". Whatever
+ * comes after => is automatically returned. The longer equivalent is:
+ *     function apiReturnLists() {
+ *         return fetchJson(API + "lists/");
+ *     }
+ * Since fetchJson is "async", what comes back is a Promise (a placeholder
+ * for the data that will arrive later).
+ */
+const apiReturnLists = () => fetchJson(API + "lists/");
+
+/**
+ * Gets all the colours for one list.
+ * Returns the saved copy if we already have it.
+ */
+async function apiReturnColours(list, signal) {
+	// 1. Already downloaded? Return it straight away.
+	//    (Shorthand: an "if" with no { } braces because it has just one
+	//    statement. It means: if the cache has this list, return the saved
+	//    copy and stop - the code below this line never runs.)
+	if (coloursCache.has(list)) return coloursCache.get(list);
+
+	// 2. Otherwise download it. encodeURIComponent makes the list name safe
+	//    to put inside a web address (e.g. turns spaces into %20).
+	const data = await fetchJson(API + "?noduplicates=true&list=" + encodeURIComponent(list), signal);
+
+	// 3. Save it for next time, then return it.
+	coloursCache.set(list, data.colors);
+	return data.colors;
+}
+
+
+/* ============================================================
+   4. THE TABLE
+   ============================================================ */
+
+/**
+ * Shows a set of colours in the table.
+ * First call: creates the table. Later calls: swaps the rows.
+ */
+function showColours(colours) {
+	// Table already exists? Just replace its rows. This is much cheaper
+	// than rebuilding the whole table.
+	//
+	// SHORTHAND EXPLAINED - "method chaining":
+	// The line below joins three steps into one, each acting on the result
+	// of the one before it. It is the same as writing:
+	//     coloursTable.clear();           // 1. remove the old rows
+	//     coloursTable.rows.add(colours); // 2. add the new rows
+	//     coloursTable.draw();            // 3. redraw the table on screen
+	// This works because DataTables hands back the table after each step,
+	// so you can keep adding ".something()" onto the end.
+	//
+	// Also, "if (coloursTable)" is a shortcut for "has this been set yet?".
+	// Before the table is created the variable is empty (undefined), which
+	// counts as "false"; once it holds a table, it counts as "true".
+	if (coloursTable) {
+		coloursTable.clear().rows.add(colours).draw();
+		return;
+	}
+
+	// Otherwise create the table for the first time.
+	coloursTable = new DataTable("#colours", {
+		data: colours,        // the rows to show
+		paging: true,         // split rows into pages
+		pageLength: 250,      // rows per page
+
+		// BIG speed-up for long lists: only build the HTML for the rows
+		// currently on screen, rather than every row up front.
+		deferRender: true,
+
+		// Dropdown/buttons placed at the top-left of the table.
+		layout: {
+			topStart: {
+				buttons: [
+					{ extend: "excelHtml5" }, // download as Excel file
+					{ extend: "csv" },        // download as CSV file
+					{ extend: "copy" },       // copy to clipboard
+					{ extend: "colvis" }      // show/hide columns
+				]
+			}
+		},
+
+		// Extra settings for particular columns (counting from 0).
+		// Exclude column 2 from search (colour description)
+		// Columns 2-10 start hidden (use the Column visibility button to show them). Column 2 (description) is also excluded
+		// from the search box.
+		columnDefs: [
+			{ target: 2, visible: false, searchable: false },
+			{ targets: [3, 4, 5, 6, 7, 8, 9, 10], visible: false }
+		],
+
+		// One entry per column, in the same order as the <th> headings.
+		// "data" is the name of the field in each colour object from the API.
+		columns: [
+			{
+				// Column 0: colour name, painted in the colour itself.
+				data: "name",
+				defaultContent: "", // show nothing if a colour has no name
+				// createdCell runs once per cell, letting us style it.
+				//
+				// SHORTHAND EXPLAINED - arrow function with braces:
+				// (cell, cellData, rowData) => { ... } is a small function written
+				// inline. DataTables calls it for us and passes in three things:
+				// the table cell, that cell's value, and the whole row of data.
+				// It is the same as: function (cell, cellData, rowData) { ... }
+				// Here the { } braces are used because there are TWO statements,
+				// so nothing is returned automatically (and nothing needs to be).
+				// We don't use "cellData", but DataTables always passes it in
+				// second place, so we must list it to reach "rowData" third.
+				createdCell: (cell, cellData, rowData) => {
+					cell.style.backgroundColor = rowData.hex;
+					cell.style.color = rowData.bestContrast; // black/white, whichever is readable
+				}
+			},
+			{ data: "hex" },
+			{ data: "tagline", defaultContent: "" },
+			{ data: "luminance" },
+			{ data: "luminanceWCAG" },
+			// "render" decides what text appears in the cell. These three
+			// turn the colour's numbers into ready-to-use CSS text.
+			//
+			// SHORTHAND EXPLAINED - two shortcuts appear in the next three lines:
+			//
+			// 1. Arrow function that returns automatically:
+			//      (d) => `...`
+			//    "d" is the colour's data (e.g. { r: 255, g: 0, b: 0 }) and the
+			//    text after => is what gets shown in the cell. No "return" or
+			//    { } braces needed. The long version would be:
+			//      function (d) { return `...`; }
+			//
+			// 2. Template literal (text inside `backticks`):
+			//    Anything written as ${ something } is replaced by its value.
+			//    So if d.r is 255, d.g is 0 and d.b is 0, then
+			//      `color: rgb(${d.r} ${d.g} ${d.b});`
+			//    becomes the text:  color: rgb(255 0 0);
+			//    This is tidier than joining pieces with +, like:
+			{ data: "rgb", render: (d) => `${d.r} ${d.g} ${d.b}` },
+			{ data: "hsl", render: (d) => `${Math.round(d.h)}° ${Math.round(d.s)}% ${Math.round(d.l)}%` },
+			{ data: "lab", render: (d) => `${Math.round(d.l)} ${Math.round(d.a)} ${Math.round(d.b)}` },
+			// Columns 8-10: the same list details are shown on every row. There is
+			// no field for them in the colour objects, so "data: null" tells
+			// DataTables not to look for one, and "render" supplies the value from
+			// currentListInfo each time a cell is drawn.
+			{ data: null, render: () => currentListInfo.title },
+			{ data: null, render: () => currentListInfo.description },
+			{
+				data: null,
+				// "type" is "display" when drawing the cell; other values (search,
+				// sort, export) get plain text instead of an HTML link.
+				render: (d, type) => {
+					const source = currentListInfo.source;
+					if (type !== "display" || !source) return source;
+					const safe = escapeHtml(source);
+					return `<a href=\"${safe}\" target=\"_blank\" rel=\"noopener noreferrer\">${safe}</a>`;
+				}
+			}
+		]
+	});
+}
+
+/**
+ * Loads a list's colours and shows them.
+ * Cancels any download still in progress for a previous choice.
+ */
+async function loadColours(list) {
+	// Cancel the previous download (if any) and start a fresh "cancel switch".
+	// Without this, a slow earlier download could finish LAST and overwrite
+	// the list you actually chose.
+	//
+	// SHORTHAND EXPLAINED - "optional chaining" (the ?. symbol):
+	// The first time this function runs, currentRequest has no value yet,
+	// and trying to call .abort() on nothing would cause an error.
+	// The "?." means "only carry on if there is something here". It is a
+	// short way of writing:
+	//     if (currentRequest) {
+	//         currentRequest.abort();
+	//     }
+	// So: if a previous download exists, cancel it; if not, do nothing.
+	currentRequest?.abort();
+	currentRequest = new AbortController();
+
+	try {
+		const colours = await apiReturnColours(list, currentRequest.signal);
+		showColours(colours);
+	} catch (error) {
+		// A cancelled download is expected, not a real error, so ignore it.
+		// (Shorthand: "if" with no { } braces. If the error is the "cancelled"
+		// kind, leave the function immediately with "return"; otherwise carry
+		// on to the next line and report it. "===" means "is exactly equal to".)
+		if (error.name === "AbortError") return;
+		console.error("Failed to load colours for the selected list:", error);
+	}
+}
+
+/* ============================================================
+   5. THE LIST INFORMATION AND DROP-DOWN
+   ============================================================ */
+
+/**
+ * Shows the title, description and source link of the chosen list.
+ * We use textContent (plain text) instead of innerHTML (which would treat
+ * the text as HTML code). That is safer: if the API ever sent back
+ * something containing HTML tags, they would be shown as text, not run.
+ */
+function updateListData(listDescriptions, selected) {
+	// SHORTHAND EXPLAINED - "destructuring":
+	// listDescriptions[selected] is an object holding many details about one
+	// list, for example { title: "...", description: "...", source: "...", ... }.
+	// The { title, description, source } on the left pulls out just those three
+	// items and creates a variable for each, named the same as the item.
+	// It is the same as writing:
+	//     const title = listDescriptions[selected].title;
+	//     const description = listDescriptions[selected].description;
+	//     const source = listDescriptions[selected].source;
+	// Any other details in the object are simply ignored.
+	const { title, description, source } = listDescriptions[selected];
+
+	currentList.textContent = "List Name: " + title;
+	currentListDescription.textContent = "List Description: " + description;
+
+	// Build the source link piece by piece.
+	const sourceLink = document.createElement("a");
+	sourceLink.href = source;
+	sourceLink.target = "_blank";            // open in a new tab
+	sourceLink.rel = "noopener noreferrer";  // security best practice for new-tab links
+	sourceLink.textContent = source;
+
+	// Replace whatever is in the <li> with: "List Source: " + the link
+	currentListSource.replaceChildren(document.createTextNode("List Source: "), sourceLink);
+
+	// Also feed the table's Category columns. Save the details, then (if the
+	// table already exists) re-read every row so the cells show the new values.
+	// If the table doesn't exist yet, it will pick them up when it is created.
+	currentListInfo = { title, description, source };
+	coloursTable?.rows().invalidate().draw(false);
+}
+
+/** Fills the drop-down menu with one option per list. */
+function populateListSelect(data, selected) {
+	// SHORTHAND EXPLAINED - "destructuring" (see updateListData above):
+	// This takes the two items named inside { } out of the "data" object
+	// and makes a variable for each. The long version would be:
+	//     const availableColorNameLists = data.availableColorNameLists;
+	//     const listDescriptions = data.listDescriptions;
+	const { availableColorNameLists, listDescriptions } = data;
+
+	// [...array] makes a copy, then .sort() puts the copy in alphabetical
+	// order. Copying means we don't alter the original data from the API.
+	//
+	// SHORTHAND EXPLAINED - the "spread" operator (the three dots):
+	// "..." unpacks every item of an array so it can be placed somewhere new.
+	// Wrapping it in square brackets, [...myList], builds a brand-new array
+	// containing the same items. Example: [...["b", "a"]] gives a new
+	// array ["b", "a"]. This matters because .sort() rearranges the array it
+	// is called on; sorting the copy leaves the API's original untouched.
+	const listKeys = [...availableColorNameLists].sort();
+
+	// A DocumentFragment is an off-screen holder. We add all options to it
+	// and then put them on the page in ONE step, which is faster than
+	// updating the page once for every option.
+	const fragment = document.createDocumentFragment();
+
+	// SHORTHAND EXPLAINED - "for...of" loop:
+	// This repeats the code inside { } once for every item in listKeys,
+	// putting the current item in "key" each time round. It saves us from
+	// the older, longer style:
+	//     for (let i = 0; i < listKeys.length; i++) {
+	//         const key = listKeys[i];
+	//         ...
+	//     }
+	for (const key of listKeys) {
+		// Destructuring again: pull "title" and "colorCount" out of this
+		// list's details object (see updateListData for a full explanation).
+		const { title, colorCount } = listDescriptions[key];
+		const option = document.createElement("option");
+		option.value = key;
+		// toLocaleString() adds thousands separators, e.g. 30000 -> "30,000"
+		//
+		// SHORTHAND EXPLAINED - template literal (text in `backticks`):
+		// Anything inside ${ } is worked out and slotted into the text. If
+		// title is "HTML" and colorCount is 30000, the result is: HTML (30,000)
+		// The long version would be:
+		//     title + " (" + colorCount.toLocaleString() + ")"
+		option.text = `${title} (${colorCount.toLocaleString()})`;
+		// SHORTHAND EXPLAINED: "key === selected" is a yes/no question: "is this
+		// option's key exactly equal to the chosen list?" The answer (true or
+		// false) is stored straight into option.selected. The long version:
+		//     if (key === selected) { option.selected = true; }
+		//     else { option.selected = false; }
+		option.selected = key === selected;
+		fragment.appendChild(option);
+	}
+
+	// Remove the "Loading…" option and add all the real ones at once.
+	listSelect.replaceChildren(fragment);
+}
+
+/* ============================================================
+   6. PAGE LOAD - this is where everything starts
+   ============================================================ */
+
+try {
+	// Ask for the list of lists AND the default colours at the SAME TIME.
+	// The original code did these one after the other (the second waited for
+	// the first). They don't depend on each other, so running them together
+	// makes the page ready sooner. Promise.all waits until both finish.
+	//
+	// SHORTHAND EXPLAINED - "array destructuring":
+	// Promise.all gives back an ARRAY of results, one per task, in the same
+	// order we listed the tasks. Here that is [listsData, whatever loadColours
+	// returns]. Writing [dataApiLists] on the left takes just the FIRST item
+	// and names it "dataApiLists". The second result is ignored. The long
+	// version would be:
+	//     const results = await Promise.all([...]);
+	//     const dataApiLists = results[0];
+	const [dataApiLists] = await Promise.all([
+		apiReturnLists(),
+		loadColours(DEFAULT_LIST)
+	]);
+
+	// Fill in the menu and the info box.
+	populateListSelect(dataApiLists, DEFAULT_LIST);
+	updateListData(dataApiLists.listDescriptions, DEFAULT_LIST);
+
+	// When the user picks a different list, update the info and load its colours.
+	//
+	// SHORTHAND EXPLAINED - arrow function with no inputs:
+	// () => { ... } is a small function written right where it is needed.
+	// The empty () means it takes no inputs. The browser runs it each time
+	// the "change" event happens (i.e. the user picks another option).
+	// The long version would be:  function () { ... }
+	listSelect.addEventListener("change", () => {
+		const selected = listSelect.value;
+		updateListData(dataApiLists.listDescriptions, selected);
+		loadColours(selected);
+	});
+} catch (error) {
+	// If the first load fails (e.g. no internet), tell the user
+	// instead of leaving "Loading…" on screen forever.
+	console.error("Failed to start Colour Explorer:", error);
+	// (new Option("text") is a short way to create a drop-down choice
+	// showing that text, instead of building one with createElement as in
+	// populateListSelect above.)
+	listSelect.replaceChildren(new Option("Could not load colour lists"));
+}
+
+</script>
+
+</body>
+
+</html>
