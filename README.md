@@ -1,6 +1,9 @@
 # zzalsjr8.github.io
 
-[https://github.com/zzalsjr8](https://github.com/zzalsjr8)
+## ZZALSJR8
+
+- [Github Homepage](https://zzalsjr8.github.io/)
+- [Github Repositories](https://github.com/zzalsjr8?tab=repositories)
 
 ## Projects
 - [colour-explorers](https://zzalsjr8.github.io/projects/colour-explorers/)
