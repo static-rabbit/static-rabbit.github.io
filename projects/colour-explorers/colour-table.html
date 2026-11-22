@@ -33,10 +33,10 @@
 </head>
 
 <body>
-	<div class="container-fluid">
-		<hr>
-		<h1>Colour Explorer - Table</h1>
-	<nav aria-label="breadcrumb" style="border-bottom:1px solid #ccc; border-top:1px solid #ccc; margin-bottom: 10px;"">
+<div class="container-fluid">
+	<hr>
+	<h1>Colour Explorer - Table</h1>
+	<nav aria-label="breadcrumb" style="border-bottom:1px solid #ccc; border-top:1px solid #ccc; margin-bottom: 10px;">
 		<ol class="breadcrumb">
 			<li class="breadcrumb-item">
 				<a class="breadcrumb-link" href="index.html">Home</a>
@@ -47,84 +47,79 @@
 			</li>
 		</ol>
 	</nav>
-		<p>Explore colours from a range of sources - uses the <a href="https://github.com/meodai/color-name-api">Color Name API</a> developed by <a href="https://github.com/meodai">meodai</a> / <a href="https://elastiq.ch/">David Aerne - Computational Designer</a> (who wrote <a href="https://www.color.pizza/">color.pizza</a> and <a href="https://names.color.pizza/">names.color.pizza</a>).</p>
-		<hr>
-		<button class="btn-solid theme-primary" type="button" data-bs-toggle="menu" aria-expanded="false">Choose Explorer Version</button>
-		<div class="menu">
-			<a class="menu-item" href="colour-grid.html">Grid</a>
-			<a class="menu-item active " href="colour-table.html">Table</a>
+	<p>Explore colours from a range of sources - uses the <a href="https://github.com/meodai/color-name-api">Color Name API</a> developed by <a href="https://github.com/meodai">meodai</a> / <a href="https://elastiq.ch/">David Aerne - Computational Designer</a> (who wrote <a href="https://www.color.pizza/">color.pizza</a> and <a href="https://names.color.pizza/">names.color.pizza</a>).</p>
+	<p>This is the table version of the colour explorer - there's also a <a href="colour-grid.html">table grid</a>.</p>
+	<hr>
+	<!-- The drop-down menu. JavaScript fills it with options later. -->
+	<div class="alert theme-accent" role="alert">
+		<div class="form-field">
+			<!-- "for" must match the select's id so clicking the label focuses the menu -->
+			<label class="form-label" for="list">Colour list</label>
+			<select id="list" class="form-control">
+				<option>Loading…</option>
+			</select>
 		</div>
-		<hr>
-		<!-- The drop-down menu. JavaScript fills it with options later. -->
-		<div class="alert theme-accent" role="alert">
-			<div class="form-field">
-				<!-- "for" must match the select's id so clicking the label focuses the menu -->
-				<label class="form-label" for="list">Colour list</label>
-				<select id="list" class="form-control">
-					<option>Loading…</option>
-				</select>
-			</div>
-		</div>
-		<hr>
-		<!-- Information about the chosen list. JavaScript fills these in. -->
-		<ul id="listData">
-			<li id="currentList"></li>
-			<li id="currentListDescription"></li>
-			<li id="currentListSource"></li>
-		</ul>
-		<button type="button" class="btn-solid theme-primary" commandfor="invokerDialog" command="show-modal">
-			Table Info
-		</button>
-		<dialog class="dialog dialog-lg" id="invokerDialog">
-			<div class="dialog-header">
-				<h1 class="dialog-title">Additional Information</h1>
-				<button type="button" class="btn-close" commandfor="invokerDialog" command="close" aria-label="Close"></button>
-			</div>
-			<div class="dialog-body">
-				<!-- Help text explaining each column -->
-				<ul>
-					<li>Click on the <code>Column visibility</code> button to show/hide columns.</li>
-					<li>Columns:
-						<ul>
-							<li>Colour: <span class="fg-emphasis-primary">Colour Name</span></li>
-							<li>Hex: <span class="fg-emphasis-primary"><a href="https://en.wikipedia.org/wiki/Web_colors">Hexadecimal value</a></span></li>
-							<li>Description: <span class="fg-emphasis-primary">Colour description, as returned by the <a href="https://github.com/meodai/color-name-api">Color Name API</a></span></li>
-							<li>Luminance: <span class="fg-emphasis-primary">Measure to describe the perceived brightness of a color ("luminance, or visually perceived brightness")</span></li>
-							<li>luminanceWCAG: <span class="fg-emphasis-primary">The relative brightness of any point in a colorspace, normalized to 0 for darkest black and 1 for lightest white</span></li>
-							<li>RGB: <span class="fg-emphasis-primary">The <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/rgb">rgb()</a> functional notation expresses a color in the sRGB color space according to its red, green, and blue components. An optional alpha component represents the color's transparency.</span></li>
-							<li>HSL: <span class="fg-emphasis-primary">The <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/hsl">hsl()</a> functional notation expresses a color in the sRGB color space according to its hue, saturation, and lightness components. An optional alpha component represents the color's transparency.</span></li>
-							<li>LAB: <span class="fg-emphasis-primary">The <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/lab">lab()</a> functional notation expresses a given color in the CIE L*a*b* color space. Lab represents the entire range of colors that humans can see by specifying the color's lightness, a red/green axis value, a blue/yellow axis value, and an optional alpha transparency value.</span></li>
-						</ul>
-					</li>
-				</ul>
-			</div>
-			<div class="dialog-footer">
-				<button type="button" class="btn-solid theme-secondary" commandfor="invokerDialog" command="close">Close</button>
-			</div>
-		</dialog>
-		<!-- The table. We only define the header here; DataTables builds the rows. -->
-		<table id="colours" class="display cell-border compact nowrap row-border stripe">
-			<thead>
-				<tr>
-					<th>Colour</th>
-					<th>Hex</th>
-					<th>Description</th>
-					<th>Luminance</th>
-					<th>luminanceWCAG</th>
-					<th>RGB</th>
-					<th>HSL</th>
-					<th>LAB</th>
-					<th>Cat</th>
-					<th>Cat Description</th>
-					<th>Cat Source</th>
-				</tr>
-			</thead>
-			<!-- No <tbody> needed: DataTables creates one for us -->
-		</table>
-		<hr>
-		<p><a href="https://getbootstrap.com/" rel="nofollow">Bootstrap</a></p>
-		<hr>
 	</div>
+	<hr>
+	<!-- Information about the chosen list. JavaScript fills these in. -->
+	<ul id="listData">
+		<li id="currentList"></li>
+		<li id="currentListDescription"></li>
+		<li id="currentListSource"></li>
+	</ul>
+	<button type="button" class="btn-solid theme-primary" commandfor="invokerDialog" command="show-modal">
+		Table Info
+	</button>
+	<dialog class="dialog dialog-lg" id="invokerDialog">
+		<div class="dialog-header">
+			<h1 class="dialog-title">Additional Information</h1>
+			<button type="button" class="btn-close" commandfor="invokerDialog" command="close" aria-label="Close"></button>
+		</div>
+		<div class="dialog-body">
+			<!-- Help text explaining each column -->
+			<ul>
+				<li>Click on the <code>Column visibility</code> button to show/hide columns.</li>
+				<li>Columns:
+					<ul>
+						<li>Colour: <span class="fg-emphasis-primary">Colour Name</span></li>
+						<li>Hex: <span class="fg-emphasis-primary"><a href="https://en.wikipedia.org/wiki/Web_colors">Hexadecimal value</a></span></li>
+						<li>Description: <span class="fg-emphasis-primary">Colour description, as returned by the <a href="https://github.com/meodai/color-name-api">Color Name API</a></span></li>
+						<li>Luminance: <span class="fg-emphasis-primary">Measure to describe the perceived brightness of a color ("luminance, or visually perceived brightness")</span></li>
+						<li>luminanceWCAG: <span class="fg-emphasis-primary">The relative brightness of any point in a colorspace, normalized to 0 for darkest black and 1 for lightest white</span></li>
+						<li>RGB: <span class="fg-emphasis-primary">The <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/rgb">rgb()</a> functional notation expresses a color in the sRGB color space according to its red, green, and blue components. An optional alpha component represents the color's transparency.</span></li>
+						<li>HSL: <span class="fg-emphasis-primary">The <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/hsl">hsl()</a> functional notation expresses a color in the sRGB color space according to its hue, saturation, and lightness components. An optional alpha component represents the color's transparency.</span></li>
+						<li>LAB: <span class="fg-emphasis-primary">The <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Values/color_value/lab">lab()</a> functional notation expresses a given color in the CIE L*a*b* color space. Lab represents the entire range of colors that humans can see by specifying the color's lightness, a red/green axis value, a blue/yellow axis value, and an optional alpha transparency value.</span></li>
+					</ul>
+				</li>
+			</ul>
+		</div>
+		<div class="dialog-footer">
+			<button type="button" class="btn-solid theme-secondary" commandfor="invokerDialog" command="close">Close</button>
+		</div>
+	</dialog>
+	<!-- The table. We only define the header here; DataTables builds the rows. -->
+	<table id="colours" class="display cell-border compact nowrap row-border stripe">
+		<thead>
+			<tr>
+				<th>Colour</th>
+				<th>Hex</th>
+				<th>Description</th>
+				<th>Luminance</th>
+				<th>luminanceWCAG</th>
+				<th>RGB</th>
+				<th>HSL</th>
+				<th>LAB</th>
+				<th>Cat</th>
+				<th>Cat Description</th>
+				<th>Cat Source</th>
+			</tr>
+		</thead>
+		<!-- No <tbody> needed: DataTables creates one for us -->
+	</table>
+	<hr>
+	<p><a href="https://getbootstrap.com/" rel="nofollow">Bootstrap</a></p>
+	<hr>
+</div>
 
 <!--
 	type="module" gives us modern JavaScript features, including top-level

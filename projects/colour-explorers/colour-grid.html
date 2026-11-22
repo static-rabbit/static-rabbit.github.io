@@ -12,6 +12,57 @@
 	<style>
 		body{font-family: "Iosevka Web", ui-monospace, monospace;}
 		td{font-size: 0.8rem; vertical-align: top;}
+
+		/* Tile appearance is driven by CSS variables that JS sets once on #colourData */
+		#colourData .colour {
+			padding: var(--tile-padding, 5px);
+			margin: var(--tile-margin, 5px);
+			rotate: var(--tile-rotate, 0deg);
+			background: var(--tile-bg, #f1f1f1);
+			border-radius: var(--tile-radius, 0);
+			border-right: 0;
+			border-bottom: 0;
+		}
+		#colourData.has-border .colour {
+			border-right: 1px solid #ccc;
+			border-bottom: 1px solid #ccc;
+		}
+		#colourData .spanForcolour {
+			display: block;
+			width: var(--swatch-size, 150px);
+			height: var(--swatch-size, 150px);
+			border-radius: var(--tile-radius, 0);
+		}
+
+		/* Display mode: data-text is "", "info" or "name" */
+		#colourData:not([data-text="info"]) .spanForcolourTextInfo,
+		#colourData:not([data-text="name"]) .spanForcolourTextList {
+			display: none;
+		}
+
+		/* CHANGE (2)/(3): side-by-side layout.
+		   JS sets data-side="true" on #colourData for the 'List & info' and
+		   'List & name' modes. Making the tile's inner wrapper (.empty) a flex row
+		   puts the swatch and the text block next to each other instead of stacked. */
+		#colourData[data-side="true"] .empty {
+			display: flex;
+			flex-direction: row;
+			align-items: flex-start;   /* info text lines up with the top of the swatch */
+			gap: 10px;                 /* space between swatch and info */
+		}
+		/* Stop the swatch being squashed when the info text is long */
+		#colourData[data-side="true"] .spanForcolour {
+			flex: 0 0 auto;
+		}
+		/* CHANGE (3): in 'List & name' mode the name is a single line, so centre it
+		   vertically against the swatch rather than leaving it at the top. */
+		#colourData[data-side="true"][data-text="name"] .empty {
+			align-items: center;
+		}
+		/* Remove the list's default bottom margin so the text sits flush with the swatch top */
+		#colourData[data-side="true"] .spanForcolourTextInfo ul {
+			margin: 0;
+		}
 	</style>
 </head>
 
@@ -19,7 +70,7 @@
 <div class="container-fluid">
 	<hr>
 	<h1>Colour Explorer - Grid</h1>
-	<nav aria-label="breadcrumb" style="border-bottom:1px solid #ccc; border-top:1px solid #ccc; margin-bottom: 10px;"">
+	<nav aria-label="breadcrumb" style="border-bottom:1px solid #ccc; border-top:1px solid #ccc; margin-bottom: 10px;">
 		<ol class="breadcrumb">
 			<li class="breadcrumb-item">
 				<a class="breadcrumb-link" href="index.html">Home</a>
@@ -30,396 +81,460 @@
 			</li>
 		</ol>
 	</nav>
-	<p>Explore colours from a range of sources - uses the <a href="https://github.com/meodai/color-name-api">Color Name API</a> developed by <a href="https://github.com/meodai">meodai</a> / <a href="https://elastiq.ch/">David Aerne - Computational Designer</a> (who wrote <a href="https://www.color.pizza/">color.pizza</a> and <a href="https://names.color.pizza/">names.color.pizza</a>).</p>
+	<p>Explore colours from a range of sources - uses the <a href="https://github.com/meodai/color-name-api">Color Name API</a> developed by <a href="https://github.com/meodai">meodai</a> / <a href="https://elastiq.ch/">David Aerne</a> (who wrote <a href="https://www.color.pizza/">color.pizza</a> and <a href="https://names.color.pizza/">names.color.pizza</a>).</p>
+	<p>This is the grid version of the colour explorer - there's also a <a href="colour-table.html">table version</a>.</p>
 	<hr>
 	<div class="row">
 		<div class="col-2">
 			<div class="sticky-top">
-				<hr>
 				<div id="panelContainer"></div>
-				<hr>
 			</div>
 		</div>
 		<div class="col-10 mt-3" id="mainContent">
 			<!-- Information about the chosen list. JavaScript fills these in. -->
 			<ul id="listData">
-				<li>Click colour to copy its hex value</li>
+				<li>Click a colour to perform the action chosen below</li>
 				<li id="currentList"></li>
 				<li id="currentListDescription"></li>
 				<li id="currentListSource"></li>
 			</ul>
 			<hr>
-			<button class="btn-solid theme-primary" type="button" data-bs-toggle="menu" aria-expanded="false">Choose Explorer Version</button>
-			<div class="menu">
-				<a class="menu-item active" href="colour-grid.html">Grid</a>
-				<a class="menu-item" href="colour-table.html">Table</a>
+			Click action:
+			<div class="form-field">
+				<input class="radio" name="radios" type="radio" id="clickCopy" checked />
+				<label for="clickCopy">Copy Hex value</label>
+			</div>
+			<div class="form-field">
+				<input class="radio" name="radios" type="radio" id="clickPizza" />
+				<label for="clickPizza">Visit entry on names.color.pizza</label>
 			</div>
 			<hr>
 			<div class="flex1 flex1-wrap" id="colourData"></div>
 		</div>
 	</div>
 	<hr>
-	<p><a href="https://getbootstrap.com/" rel="nofollow">Bootstrap</a> | <a href="https://tweakpane.org/" rel="nofollow">Tweakpane</a> | <a href="https://clipboardjs.com/" rel="nofollow">Clipboard.js</a></p>
+	<p><a href="https://getbootstrap.com/" rel="nofollow">Bootstrap</a> | <a href="https://tweakpane.org/" rel="nofollow">Tweakpane</a></p>
 	<hr>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer" style="z-index:1100;"></div>
+
 <script type="module">
 
 import { Pane } from "https://esm.sh/tweakpane";
 
-const pane = new Pane({ expanded: true, container: document.getElementById('panelContainer') });
+// ###############################################################
+// Constants and DOM references (each element is looked up once)
+// ###############################################################
 
-let clickArray = [];
+const $ = (id) => document.getElementById(id);
+
+const divColourData = $('colourData');
+const currentList = $('currentList');
+const currentListDescription = $('currentListDescription');
+const currentListSource = $('currentListSource');
+
+const API = "https://api.color.pizza/v1/";
+const HEADERS = { "X-Referrer": "colour-explorer" };
 
 const SETTINGS = {
 	filterList: '',
 	colourSize: 150,
 	padding: 5,
-	margin:5,
+	margin: 5,
 	rotate: 0,
 	border: false,
 	borderRadius: 0,
 	colourBackground: '#f1f1f1',
 	design: 'html',
-	display: 'displayGridList'
+	display: 'displayGridList',
+	// CHANGE (1): two new settings backing the Tweakpane sort controls.
+	// `sort` holds the name of the colour attribute to sort by (see SORTERS below);
+	// `sortOrder` is 'asc' or 'desc'.
+	sort: 'name',
+	sortOrder: 'asc'
 };
 
-const folderGeneral = pane.addFolder({
-	title: '🟡 General',
-	expanded: true,
-});
-
-function init(){
-
-	Array.from(document.getElementsByClassName('colour')).forEach((colour) => {
-		colour.style.setProperty('padding', `${SETTINGS.padding}px`);
-		colour.style.setProperty('margin', `${SETTINGS.margin}px`);
-		colour.style.setProperty('rotate', `${SETTINGS.rotate}deg`);
-		colour.style.setProperty('background', `${SETTINGS.colourBackground}`);
-		if(`${SETTINGS.border}` === 'true') {
-			colour.style.setProperty('border-right', `1px solid #ccc`);
-			colour.style.setProperty('border-bottom', `1px solid #ccc`);
-		} else if(`${SETTINGS.border}` === 'false') {
-			colour.style.setProperty('border-right', `0px`);
-			colour.style.setProperty('border-bottom', `0px`);
-		}
-		colour.style.setProperty('border-radius', `${SETTINGS.borderRadius}px`);
-	});
-
-	// the colour swatch is a block whose width/height is the `size` setting
-	Array.from(document.getElementsByClassName('spanForcolour')).forEach((swatch) => {
-		swatch.style.setProperty('display', 'block');
-		swatch.style.setProperty('width', `${SETTINGS.colourSize}px`);
-		swatch.style.setProperty('height', `${SETTINGS.colourSize}px`);
-		swatch.style.setProperty('border-radius', `${SETTINGS.borderRadius}px`);
-	});
-}
-
-folderGeneral.addBinding(SETTINGS, 'filterList', { label: 'filter' });
-folderGeneral.addBinding(SETTINGS, 'colourSize', { min: 20, max: 1000, step: 1, label: 'size' }).on('change', () => init());
-folderGeneral.addBinding(SETTINGS, 'padding', { min: 0, max: 250, step: 1, label: 'padding' }).on('change', () => init());
-folderGeneral.addBinding(SETTINGS, 'margin', { min: 0, max: 250, step: 1, label: 'margin' }).on('change', () => init());
-folderGeneral.addBinding(SETTINGS, 'rotate', { min: 0, max: 360, step: 1, label: 'rotate' }).on('change', () => init());
-folderGeneral.addBinding(SETTINGS, 'border').on('change', () => init());
-folderGeneral.addBinding(SETTINGS, 'borderRadius', { min: 0, max: 300, step: 1, label: 'border-radius' }).on('change', () => init());
-folderGeneral.addBinding(SETTINGS, 'colourBackground', { label: 'colourbg' }).on('change', () => init());
-
-/*
--------------------------
- display folder
- -------------------------
-*/
-
-const folderDisplay = pane.addFolder({
-	title: '🟡 Display Options',
-	expanded: true,
-});
-
-folderDisplay.addBinding(SETTINGS, 'display', { label: 'display', options: {
-	'grid': 'displayGrid' ,
-	'grid & info': 'displayGridInfo',
-	'grid & name': 'displayGridList',
-	'list & info': 'displayInfo',
-	'list & name': 'displayList'
-	}
-}).on('change', () => displayGridList(SETTINGS['display']));
-
-// ###############################################################
-// Colour lists API (populates the `design` list)
-// ###############################################################
-
-const getId = (id) => document.getElementById(id);
-const API = "https://api.color.pizza/v1/";
-const DEFAULT_LIST = "html";
-const REFERRER = "colour-explorer";
-const HEADERS = {
-	"X-Referrer": REFERRER
+// Each display mode is described by three flags:
+//   grid - true  = tiles wrap across the page as a grid
+//          false = one tile per row, i.e. a vertical list
+//   text - which text block is shown: '' (none), 'info' (name/hex/luminance) or 'name' (name only)
+//   side - true  = the text sits to the SIDE (right) of the swatch
+//          false = the text sits UNDERNEATH the swatch
+// CHANGE (3): 'List & name' (displayList) now has side: true, so its name
+// appears beside the tile, matching 'List & info'. Only this flag needed to change;
+// setMode() below passes it to the stylesheet, which does the actual layout.
+const MODES = {
+	displayGrid:     { grid: true,  text: '',     side: false },
+	displayGridInfo: { grid: true,  text: 'info', side: false },
+	displayGridList: { grid: true,  text: 'name', side: false },
+	displayInfo:     { grid: false, text: 'info', side: true  }, // 'List & info': info to the right of the tile
+	displayList:     { grid: false, text: 'name', side: true  }  // 'List & name': name to the right of the tile
 };
 
-async function apiReturnLists() {
-	const response = await fetch(API + "lists/", {
-		headers: HEADERS
-	});
-	if (!response.ok) throw new Error("HTTP " + response.status);
-	const data = await response.json(); // {availableColorNameLists, listDescriptions}
-	return data;
+// CHANGE (1): comparison functions, one per sortable attribute.
+// Each returns negative / zero / positive, as Array.prototype.sort expects (ascending).
+// Descending order is produced later by multiplying the result by -1.
+const SORTERS = {
+	name:      (a, b) => a.name.localeCompare(b.name),   // alphabetical, locale-aware
+	hex:       (a, b) => a.hex.localeCompare(b.hex),     // hex strings are all the same length, so string order = numeric order
+	luminance: (a, b) => Number(a.luminance) - Number(b.luminance) // numeric, in case the API sends strings
+};
+
+// ###############################################################
+// Helpers
+// ###############################################################
+
+const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ESCAPES[char]);
+
+const debounce = (fn, ms) => {
+	let timer;
+	return (...args) => {
+		clearTimeout(timer);
+		timer = setTimeout(() => fn(...args), ms);
+	};
+};
+
+async function fetchJson(url, signal) {
+	const response = await fetch(url, { headers: HEADERS, signal });
+	if (!response.ok) throw new Error(`HTTP ${response.status}`);
+	return response.json();
 }
 
-// Build the Tweakpane options object ({ label: value }) from the API data,
-// using the same "Title (count)" label format as the colour list <select>
-function buildDesignOptions(data) {
-	const options = {};
-	const listKeys = [...data.availableColorNameLists];
-	const listDescriptions = data.listDescriptions;
-	listKeys.forEach((key) => {
-		const d = listDescriptions[key];
-		const optCount = (d.colorCount).toLocaleString();
-		options[d.title + " (" + optCount + ")"] = key;
-	});
-	return options;
+// ###############################################################
+// Appearance: set CSS variables ONCE on the container.
+// The stylesheet applies them to every tile, so the cost does not
+// grow with the number of colours.
+// ###############################################################
+
+function applyStyles() {
+	const { style, classList } = divColourData;
+	style.setProperty('--swatch-size', `${SETTINGS.colourSize}px`);
+	style.setProperty('--tile-padding', `${SETTINGS.padding}px`);
+	style.setProperty('--tile-margin', `${SETTINGS.margin}px`);
+	style.setProperty('--tile-rotate', `${SETTINGS.rotate}deg`);
+	style.setProperty('--tile-bg', SETTINGS.colourBackground);
+	style.setProperty('--tile-radius', `${SETTINGS.borderRadius}px`);
+	classList.toggle('has-border', SETTINGS.border);
 }
+
+// Display mode: flip a class and data attributes; CSS does the showing/hiding.
+function setMode(mode) {
+	const { grid, text, side } = MODES[mode] ?? MODES.displayGridList;
+	divColourData.classList.toggle('flex1', grid);
+	divColourData.classList.toggle('flex1-wrap', grid);
+	divColourData.dataset.text = text;
+	// CHANGE (2)/(3): data-side="true" switches on the flex-row rule in the stylesheet
+	// (swatch and text side by side), for both 'List & info' and 'List & name'.
+	// An empty string means the attribute selector [data-side="true"] doesn't match,
+	// so the tile falls back to its normal stacked layout (text under the swatch).
+	divColourData.dataset.side = side ? 'true' : '';
+}
+
+// ###############################################################
+// Colour lists (populates the `design` dropdown)
+// ###############################################################
+
+const buildDesignOptions = ({ availableColorNameLists, listDescriptions }) =>
+	Object.fromEntries(
+		availableColorNameLists.map((key) => {
+			const { title, colorCount } = listDescriptions[key];
+			return [`${title} (${colorCount.toLocaleString()})`, key];
+		})
+	);
 
 let designOptions;
-let listDescriptions = {}; // details (title, description, source) for each list, keyed by list name
+let listDescriptions = {}; // title, description, source for each list, keyed by list name
 try {
-	const dataApiLists = await apiReturnLists();
-	designOptions = buildDesignOptions(dataApiLists);
-	listDescriptions = dataApiLists.listDescriptions;
+	const data = await fetchJson(API + "lists/");
+	designOptions = buildDesignOptions(data);
+	listDescriptions = data.listDescriptions;
 } catch (error) {
 	console.error("Failed to load colour lists:", error);
 	designOptions = { 'HTML': 'html' };
 	SETTINGS.design = 'html';
 }
 
-folderDisplay.addBinding(SETTINGS, 'design', { label: 'design', options: designOptions
-}).on('change', () => {
-	updateListData(listDescriptions, SETTINGS['design']);
-	displayDesign(SETTINGS['design']);
-});
-
-var clipboard = new ClipboardJS('.colour');
-
-// ###############################################################
-// Assign variables from document
-// ###############################################################
-
-const divMainContent = document.getElementById("mainContent");
-const divcolourData = document.getElementById("colourData");
-
-// ###############################################################
-// List information (ul#listData)
-// ###############################################################
-
-const currentList = document.getElementById("currentList");
-const currentListDescription = document.getElementById("currentListDescription");
-const currentListSource = document.getElementById("currentListSource");
-
 /**
  * Shows the title, description and source link of the chosen list.
- * textContent (plain text) is used rather than innerHTML so that any HTML
- * in the API data is displayed as text, not run.
+ * textContent (not innerHTML) is used so any HTML in the API data is shown as text.
  */
-function updateListData(listDescriptions, selected) {
-	// Nothing to show if the lists failed to load or the key is unknown
-	if (!listDescriptions || !listDescriptions[selected]) {
+function updateListData(selected) {
+	const info = listDescriptions[selected];
+	if (!info) {
 		currentList.textContent = "";
 		currentListDescription.textContent = "";
 		currentListSource.replaceChildren();
 		return;
 	}
 
-	const { title, description, source } = listDescriptions[selected];
+	const { title, description, source } = info;
+	currentList.textContent = `List Name: ${title}`;
+	currentListDescription.textContent = `List Description: ${description}`;
 
-	currentList.textContent = "List Name: " + title;
-	currentListDescription.textContent = "List Description: " + description;
-
-	// Build the source link piece by piece
-	const sourceLink = document.createElement("a");
-	sourceLink.href = source;
-	sourceLink.target = "_blank";            // open in a new tab
-	sourceLink.rel = "noopener noreferrer";  // security best practice for new-tab links
-	sourceLink.textContent = source;
-
-	// Replace whatever is in the <li> with: "List Source: " + the link
-	currentListSource.replaceChildren(document.createTextNode("List Source: "), sourceLink);
+	const link = document.createElement("a");
+	link.href = source;
+	link.target = "_blank";
+	link.rel = "noopener noreferrer";
+	link.textContent = source;
+	currentListSource.replaceChildren("List Source: ", link);
 }
 
 // ###############################################################
-// Colours API (adapted from apiReturnColours in colour-grid-000002)
+// Colours: fetch, sort, build HTML (cached), render
 // ###############################################################
 
-function escapeHtml(value) {
-	return String(value)
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;")
-		.replace(/'/g, "&#39;");
+function toTitleCase(str) {
+	return str.replace(
+		/\w\S*/g,
+		text => text.charAt(0).toUpperCase() + text.substring(1).toLowerCase()
+	);
 }
 
-// Fetches the colours for a list and returns the HTML for the grid tiles
-async function apiReturnColours(list){
-	const response = await fetch(API + "?noduplicates=true&list=" + encodeURIComponent(list), {
-		headers: HEADERS
-	});
-	if (!response.ok) throw new Error("HTTP " + response.status);
-	const data = await response.json();
-	const colours = data.colors;
-	console.log({colours});
-	let concatHtml = "";
-	for(let i = 0; i < colours.length; i++){
-		const colourName = escapeHtml(colours[i].name);
-		const colourHex = escapeHtml(colours[i].hex);
-		const colourTitle = (colourName + " " + colourHex).toLowerCase();
-		let colourTextDetails = "<ul class='list-unstyled'>";
-		colourTextDetails += "<li class='fs-6'>Colour Name: <b>" + colourName + "</b></li>\n";
-		colourTextDetails += "<li class='fs-6'>Hex: <b>" + colourHex + "</b></li>\n";
-		colourTextDetails += "</ul>";
-		concatHtml += "<div class='colour row' title='" + colourTitle + "' data-name='" + colourName + "' data-hex='" + colourHex + "' data-clipboard-text='" + colourHex + "'>";
-		concatHtml += "	<div class='empty' data-clipboard-text='" + colourHex + "'>";
-		concatHtml += "	<span class='spanForcolour' data-hex='" + colourHex + "' style='background-color:" + colourHex + ";'></span> ";
-		concatHtml += "	<span class='spanForcolourTextInfo hidden'>" + colourTextDetails + "</span>";
-		concatHtml += "	<span class='spanForcolourTextList fs-6 hidden'>" + colourName + "</span>";
-		concatHtml += "	</div>";
-		concatHtml += "</div>";
+const renderColours = (colours) => colours.map(({ name, hex, luminance }) => {
+	const n = escapeHtml(name);
+	const h = escapeHtml(hex);
+	const l = escapeHtml(luminance);
+	return `<div class="colour row" title="${`${n} ${h} ${l}`.toLowerCase()}" data-hex="${h}" data-name="${n}">` +
+		`<div class="empty">` +
+			`<span class="spanForcolour" style="background-color:${h};"></span>` +
+			`<span class="spanForcolourTextInfo"><ul class="list-unstyled">` +
+				`<li class="fs-6"><b>${toTitleCase(n)}</b></li>` +
+				`<li class="fs-6">${h}</li>` +
+				`<li class="fs-6"><abbr title='Luminance'>${l}</abbr></li>` +
+			`</ul></span>` +
+			`<span class="spanForcolourTextList fs-6">${toTitleCase(n)}</span>` +
+		`</div>` +
+	`</div>`;
+}).join('');
+
+// CHANGE (1): the cache is now split in two.
+// 1. colourCache holds the RAW colour arrays, one per list. The network is hit once per list,
+//    and changing the sort never triggers a new request.
+// 2. htmlCache holds finished HTML keyed by list + sort field + sort order, so flipping back
+//    to a combination already seen needs neither a re-sort nor a rebuild.
+const colourCache = new Map(); // list name -> array of colour objects (as returned by the API)
+const htmlCache = new Map();   // "list|sort|order" -> finished HTML
+
+/**
+ * Returns a NEW array sorted by the chosen attribute and direction.
+ * slice() copies first, because Array.sort works in place and we must not
+ * reorder the array held in colourCache.
+ */
+function sortColours(colours, sortKey, sortOrder) {
+	const compare = SORTERS[sortKey] ?? SORTERS.name;
+	const direction = sortOrder === 'desc' ? -1 : 1; // -1 flips the comparison for descending
+	return colours.slice().sort((a, b) => compare(a, b) * direction);
+}
+
+async function getColourHtml(list, signal) {
+	const { sort, sortOrder } = SETTINGS;
+	const key = `${list}|${sort}|${sortOrder}`;
+
+	if (!htmlCache.has(key)) {
+		if (!colourCache.has(list)) {
+			const { colors } = await fetchJson(`${API}?noduplicates=true&list=${encodeURIComponent(list)}`, signal);
+			colourCache.set(list, colors);
+		}
+		htmlCache.set(key, renderColours(sortColours(colourCache.get(list), sort, sortOrder)));
 	}
-	return concatHtml;
+	return htmlCache.get(key);
 }
 
 // ###############################################################
-// Set HTML content for Divs
+// Filter (the Tweakpane text box is wired up below)
 // ###############################################################
 
-function setContent(concatHtml) {
-	divcolourData.innerHTML = concatHtml;
-	init();
-	// keep the currently selected display mode (grid / info / name / list)
-	displayGridList(SETTINGS['display']);
-}
+let filterInput; // set once the pane exists
 
-// ###############################################################
-// Grid / List
-// ###############################################################
-
-function displayGridList(mode){
-	
-	// get colours (in an Object)
-	const colours = document.getElementsByClassName("colour");
-
-	// convert colours Object to an Array
-	const colourArray = Object.entries(colours);
-
-	colourArray.map(colour=>{
-		const thiscolour = colour[1];
-		if(mode === "displayGrid") {
-			if(!thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.contains('hidden')){
-				thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.add("hidden");
-			}
-			if(!thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.contains('hidden')){
-				thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.add("hidden");
-			}
-		} else if (mode === "displayGridInfo") {
-			if(!thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.contains('hidden')){
-				thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.add("hidden");
-			}
-			if(thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.contains('hidden')){
-				thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.remove("hidden");
-			}
-		} else if (mode === "displayGridList") {
-			if(thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.contains('hidden')){
-				thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.remove("hidden");
-			}
-			if(!thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.contains('hidden')){
-				thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.add("hidden");
-			}
-		} else if (mode === "displayInfo") {
-			if(!thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.contains('hidden')){
-				thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.add("hidden");
-			}
-			if(thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.contains('hidden')){
-				thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.remove("hidden");
-			}
-		} else if (mode === "displayList") {
-			if(thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.contains('hidden')){
-				thiscolour.getElementsByClassName('spanForcolourTextList')[0].classList.remove("hidden");
-			}
-			if(!thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.contains('hidden')){
-				thiscolour.getElementsByClassName('spanForcolourTextInfo')[0].classList.add("hidden");
-			}
-		}
-	})
-
-	// set flex classes
-	// ------------------------
-
-	if(mode === "displayGrid" || mode === "displayGridInfo" || mode === "displayGridList") {
-		if(!divcolourData.classList.contains("flex1")){
-			divcolourData.classList.add("flex1");
-		}
-		if(!divcolourData.classList.contains("flex1-wrap")){
-			divcolourData.classList.add("flex1-wrap");
-		}
-	} else {
-
-
-		divcolourData.classList.remove("flex1");
-		divcolourData.classList.remove("flex1-wrap");
-
+function applyFilter() {
+	const term = filterInput.value.trim().toLowerCase();
+	for (const tile of divColourData.querySelectorAll('.colour')) {
+		tile.classList.toggle('hidden', term !== '' && !tile.title.includes(term));
 	}
-
 }
 
-
 // ###############################################################
-// Design
+// Showing a list
 // ###############################################################
 
-// How to get parent multiple levels up the DOM tree without jQuery or modifying Element.prototype?
-// https://stackoverflow.com/a/65708136
+let controller; // lets a newer selection cancel an older, slower request
 
-function getParentNode(element, level = 1) { // 1 - default value (if no 'level' parameter is passed to the function)
-    while (level-- > 0) {
-      element = element.parentNode;
-      if (!element) return null; // to avoid a possible "TypeError: Cannot read property 'parentNode' of null" if the requested level is higher than document
-    }
-    return element;
-}
+async function displayDesign(list) {
+	controller?.abort();
+	controller = new AbortController();
+	const { signal } = controller;
 
-let designRequest = 0; // guards against out-of-order responses when switching lists quickly
-
-async function displayDesign(design){
-	const thisRequest = ++designRequest;
 	try {
-		const html = await apiReturnColours(design);
-		if (thisRequest !== designRequest) return; // a newer selection has superseded this one
-		setContent(html);
+		const html = await getColourHtml(list, signal);
+		if (signal.aborted) return; // superseded while we were waiting
+		divColourData.innerHTML = html;
+		applyFilter(); // keep any active filter when the list changes
 	} catch (error) {
+		if (error.name === 'AbortError') return; // expected: we cancelled it ourselves
 		console.error("Failed to load colours for the selected list:", error);
-		if (thisRequest !== designRequest) return;
-		divcolourData.innerHTML = "<p class='text-danger'>Failed to load colours for the selected list.</p>";
+		if (!signal.aborted) {
+			divColourData.innerHTML = "<p class='text-danger'>Failed to load colours for the selected list.</p>";
+		}
 	}
 }
 
-// page load first time
-updateListData(listDescriptions, SETTINGS['design']);
-await displayDesign(SETTINGS['design']);
-
 // ###############################################################
-// colour text filter
+// Tweakpane controls
 // ###############################################################
 
-document.querySelectorAll('.tp-txtv_i')[0].addEventListener('keyup', function (e) {
-	e.stopPropagation();
-	const searchVal = this.value.toLowerCase();
-	const filterItems = document.querySelectorAll('[title]');
-	if (searchVal !== '') {
-		filterItems.forEach(el => el.classList.add('hidden'));
-		document.querySelectorAll(`[title*="${searchVal}"]`).forEach(el => el.classList.remove('hidden'));
+const pane = new Pane({ expanded: true, container: $('panelContainer') });
+
+const folderGeneral = pane.addFolder({ title: '🟡 General', expanded: true });
+
+const filterBinding = folderGeneral.addBinding(SETTINGS, 'filterList', { label: 'filter' });
+filterInput = filterBinding.element.querySelector('input');
+filterInput.addEventListener('input', debounce(applyFilter, 150));
+
+[
+	['colourSize',       { min: 20, max: 1000, step: 1, label: 'size' }],
+	['padding',          { min: 0,  max: 250,  step: 1, label: 'padding' }],
+	['margin',           { min: 0,  max: 250,  step: 1, label: 'margin' }],
+	['rotate',           { min: 0,  max: 360,  step: 1, label: 'rotate' }],
+	['border',           {}],
+	['borderRadius',     { min: 0,  max: 300,  step: 1, label: 'border-radius' }],
+	['colourBackground', { label: 'colourbg' }]
+].forEach(([key, options]) => folderGeneral.addBinding(SETTINGS, key, options));
+
+// One listener on the folder catches a change from any control inside it
+folderGeneral.on('change', applyStyles);
+
+const folderDisplay = pane.addFolder({ title: '🟡 Display Options', expanded: true });
+
+folderDisplay.addBinding(SETTINGS, 'design', { label: 'design', options: designOptions })
+	.on('change', () => {
+		updateListData(SETTINGS.design);
+		displayDesign(SETTINGS.design);
+	});
+
+folderDisplay.addBinding(SETTINGS, 'display', {
+	label: 'display',
+	options: {
+		'Grid': 'displayGrid',
+		'Grid & info': 'displayGridInfo',
+		'Grid & name': 'displayGridList',
+		'List & info': 'displayInfo',
+		'List & name': 'displayList'
+	}
+}).on('change', () => setMode(SETTINGS.display));
+
+// CHANGE (1): the 'Sort' select (Name / Hex / Lum) plus an Ascending / Descending select.
+// Option values match the keys of SORTERS, so they are used directly to look up the comparison.
+// Either change just re-runs displayDesign(): the raw colours are already cached, so it only
+// re-sorts, rebuilds the HTML (or reuses it from htmlCache) and re-applies any active filter.
+const redisplay = () => displayDesign(SETTINGS.design);
+
+folderDisplay.addBinding(SETTINGS, 'sort', {
+	label: 'sort',
+	options: { 'Name': 'name', 'Hex': 'hex', 'Lum': 'luminance' }
+}).on('change', redisplay);
+
+folderDisplay.addBinding(SETTINGS, 'sortOrder', {
+	label: 'order',
+	options: { 'Ascending': 'asc', 'Descending': 'desc' }
+}).on('change', redisplay);
+
+// ###############################################################
+// Toast helpers
+// ###############################################################
+
+// Full date and time, down to the second, in the viewer's own time zone
+const formatTimestamp = (date) => date.toLocaleString('en-GB', {
+	dateStyle: 'full',
+	timeStyle: 'long'
+});
+
+// Bootstrap is loaded as a module, so there may be no global `bootstrap`.
+// Import its Toast class once, on first use, and fall back to a manual
+// show/hide if it cannot be found.
+let ToastClass;
+async function getToastClass() {
+	if (ToastClass !== undefined) return ToastClass;
+	try {
+		const mod = await import('https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js');
+		ToastClass = mod.Toast ?? mod.default?.Toast ?? window.bootstrap?.Toast ?? null;
+	} catch {
+		ToastClass = window.bootstrap?.Toast ?? null;
+	}
+	return ToastClass;
+}
+
+async function showToast({ title, body, variant = 'success', delay = 5000 }) {
+	const el = document.createElement('div');
+	el.className = 'toast';
+	el.setAttribute('role', variant === 'danger' ? 'alert' : 'status');
+	el.setAttribute('aria-live', variant === 'danger' ? 'assertive' : 'polite');
+	el.setAttribute('aria-atomic', 'true');
+	el.innerHTML =
+		`<div class="toast-header">` +
+			`<span class="rounded me-2 bg-${variant}" style="width:1em;height:1em;display:inline-block;"></span>` +
+			`<strong class="me-auto">${title}</strong>` +
+			`<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>` +
+		`</div>` +
+		`<div class="toast-body">${body}</div>`;
+	$('toastContainer').append(el);
+
+	// Remove the element once hidden so repeated clicks don't pile up in the DOM
+	el.addEventListener('hidden.bs.toast', () => el.remove());
+
+	const Toast = await getToastClass();
+	if (Toast) {
+		Toast.getOrCreateInstance(el, { delay }).show();
 	} else {
-		filterItems.forEach(el => el.classList.remove('hidden'));
+		el.classList.add('show');
+		el.querySelector('.btn-close').addEventListener('click', () => el.remove());
+		setTimeout(() => el.remove(), delay);
+	}
+}
+
+// ###############################################################
+// Tile click: copy the hex value, or visit names.color.pizza,
+// depending on which 'radios' option is ticked.
+// One delegated listener on the container covers every tile, including
+// tiles that are replaced whenever the list or sort changes.
+// ###############################################################
+
+divColourData.addEventListener('click', async (event) => {
+	const tile = event.target.closest('.colour');
+	if (!tile) return;
+
+	const hex = tile.dataset.hex;
+	const action = document.querySelector('input[name="radios"]:checked')?.id ?? 'clickCopy';
+
+	if (action === 'clickPizza') {
+		window.location.assign(`https://names.color.pizza/color/${hex}`);
+		return;
+	}
+
+	try {
+		await navigator.clipboard.writeText(hex);
+		const name = toTitleCase(tile.dataset.name ?? '');
+		showToast({
+			title: 'Copied to clipboard',
+			body: `<div><b>${escapeHtml(name)}</b> (${escapeHtml(hex)}) has been copied.</div>` +
+				`<small class="text-body-secondary">${formatTimestamp(new Date())}</small>`
+		});
+	} catch (error) {
+		// Clipboard API needs a secure context (https or localhost) and may need permission
+		console.error('Failed to copy hex value:', error);
+		showToast({ title: 'Copy failed', body: `Could not copy ${escapeHtml(hex)} to the clipboard.`, variant: 'danger' });
 	}
 });
+
+// ###############################################################
+// First load
+// ###############################################################
+
+applyStyles();
+setMode(SETTINGS.display);
+updateListData(SETTINGS.design);
+await displayDesign(SETTINGS.design);
 
 </script>
 
