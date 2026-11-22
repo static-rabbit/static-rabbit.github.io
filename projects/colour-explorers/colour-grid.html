@@ -318,11 +318,36 @@ const colourCache = new Map(); // list name -> array of colour objects (as retur
 const htmlCache = new Map();   // "list|sort|order" -> finished HTML
 
 /**
+ * CHANGE (4): returns a NEW, randomly ordered copy of the array (Fisher-Yates shuffle).
+ *
+ * How it works: walk backwards from the last position to the second.
+ * At each position i, pick a random position j anywhere from 0 to i (inclusive)
+ * and swap the two items. Everything after i is then "settled", and every possible
+ * ordering is equally likely. (Using .sort(() => Math.random() - 0.5) instead looks
+ * shorter but gives a biased shuffle, which is why it is avoided here.)
+ *
+ * slice() copies first so the array held in colourCache is never reordered.
+ */
+function shuffleColours(colours) {
+	const shuffled = colours.slice();
+	for (let i = shuffled.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1)); // random index from 0..i
+		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; // swap the pair
+	}
+	return shuffled;
+}
+
+/**
  * Returns a NEW array sorted by the chosen attribute and direction.
  * slice() copies first, because Array.sort works in place and we must not
  * reorder the array held in colourCache.
  */
 function sortColours(colours, sortKey, sortOrder) {
+	// CHANGE (4): 'random' is not a comparison, so it does not live in SORTERS.
+	// It is handled first and returns early; the ascending/descending order is
+	// meaningless for a shuffle, so sortOrder is ignored.
+	if (sortKey === 'random') return shuffleColours(colours);
+
 	const compare = SORTERS[sortKey] ?? SORTERS.name;
 	const direction = sortOrder === 'desc' ? -1 : 1; // -1 flips the comparison for descending
 	return colours.slice().sort((a, b) => compare(a, b) * direction);
@@ -332,12 +357,20 @@ async function getColourHtml(list, signal) {
 	const { sort, sortOrder } = SETTINGS;
 	const key = `${list}|${sort}|${sortOrder}`;
 
-	if (!htmlCache.has(key)) {
+	// CHANGE (4): a random order must NOT be cached. If it were, choosing 'Random'
+	// a second time would just replay the first shuffle. So for 'random' we skip the
+	// htmlCache entirely and build fresh HTML on every call. The raw colours are still
+	// cached, so there is no extra network request.
+	const cacheable = sort !== 'random';
+
+	if (!cacheable || !htmlCache.has(key)) {
 		if (!colourCache.has(list)) {
 			const { colors } = await fetchJson(`${API}?noduplicates=true&list=${encodeURIComponent(list)}`, signal);
 			colourCache.set(list, colors);
 		}
-		htmlCache.set(key, renderColours(sortColours(colourCache.get(list), sort, sortOrder)));
+		const html = renderColours(sortColours(colourCache.get(list), sort, sortOrder));
+		if (!cacheable) return html; // fresh shuffle: hand it back without storing it
+		htmlCache.set(key, html);
 	}
 	return htmlCache.get(key);
 }
@@ -430,15 +463,27 @@ folderDisplay.addBinding(SETTINGS, 'display', {
 // re-sorts, rebuilds the HTML (or reuses it from htmlCache) and re-applies any active filter.
 const redisplay = () => displayDesign(SETTINGS.design);
 
-folderDisplay.addBinding(SETTINGS, 'sort', {
+// CHANGE (4): 'Random' is the 4th option. Its value, 'random', is handled specially in
+// sortColours() rather than being looked up in SORTERS.
+const sortBinding = folderDisplay.addBinding(SETTINGS, 'sort', {
 	label: 'sort',
-	options: { 'Name': 'name', 'Hex': 'hex', 'Lum': 'luminance' }
-}).on('change', redisplay);
+	options: { 'Name': 'name', 'Hex': 'hex', 'Lum': 'luminance', 'Random': 'random' }
+});
 
-folderDisplay.addBinding(SETTINGS, 'sortOrder', {
+const orderBinding = folderDisplay.addBinding(SETTINGS, 'sortOrder', {
 	label: 'order',
 	options: { 'Ascending': 'asc', 'Descending': 'desc' }
 }).on('change', redisplay);
+
+// CHANGE (4): ascending/descending means nothing for a shuffle, so grey out the
+// 'order' control while 'Random' is selected, and re-enable it for the other sorts.
+const updateOrderState = () => { orderBinding.disabled = SETTINGS.sort === 'random'; };
+
+sortBinding.on('change', () => {
+	updateOrderState();
+	redisplay();
+});
+updateOrderState(); // set the correct state on first load
 
 // ###############################################################
 // Toast helpers
