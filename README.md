@@ -18,7 +18,7 @@
     - [Quercus.JS Treeview](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-treeview.html)
     - [Slidevars UI](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-slidevars.html)
     - [Simple Slider](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-simple-slider.html)
-    - [https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-table.html](Datatables Table)
+    - [Datatables Table](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-table.html)
 - [passphrase-generator](https://static-rabbit.github.io/projects/passphrase-generator/)
   - A basic passphrase generator.
 - [spoonerisms](https://static-rabbit.github.io/projects/spoonerisms/)
