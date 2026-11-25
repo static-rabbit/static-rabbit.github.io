@@ -1,4 +1,4 @@
-# static-rabbit.github.io
+# 🐰 static-rabbit.github.io
 
 ## static-rabbit
 
