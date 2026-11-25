@@ -13,12 +13,12 @@
     - [Colour Table](https://static-rabbit.github.io/projects/colour-explorers/colour-table.html)
 - [emoji-browsers](https://static-rabbit.github.io/projects/emoji-browsers/)
   - A range of emoji browsers for exploring emojis.
-    - Pages:
-      - [Tweakpane UI](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-tweakpane.html)
-      - [Quercus.JS Treeview](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-treeview.html)
-      - [Slidevars UI](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-slidevars.html)
-      - [Simple Slider](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-simple-slider.html)
-      - [https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-table.html](Datatables Table)
+  - Pages:
+    - [Tweakpane UI](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-tweakpane.html)
+    - [Quercus.JS Treeview](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-treeview.html)
+    - [Slidevars UI](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-slidevars.html)
+    - [Simple Slider](https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-simple-slider.html)
+    - [https://static-rabbit.github.io/projects/emoji-browsers/emoji-browser-table.html](Datatables Table)
 - [passphrase-generator](https://static-rabbit.github.io/projects/passphrase-generator/)
   - A basic passphrase generator.
 - [spoonerisms](https://static-rabbit.github.io/projects/spoonerisms/)
