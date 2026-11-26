@@ -10,6 +10,7 @@
   - Uses [David Aerne's](https://elastiq.ch/) [color-name-api](https://github.com/meodai/color-name-api) to explore colours in table or grid layouts.
   - Pages:
     - [Colour Grid](https://static-rabbit.github.io/projects/colour-explorers/colour-grid.html)
+    - [Simple Colour Grid](https://static-rabbit.github.io/projects/colour-explorers/colour-grid-simple.html)
     - [Colour Table](https://static-rabbit.github.io/projects/colour-explorers/colour-table.html)
 - [emoji-browsers](https://static-rabbit.github.io/projects/emoji-browsers/)
   - A range of emoji browsers for exploring emojis.
