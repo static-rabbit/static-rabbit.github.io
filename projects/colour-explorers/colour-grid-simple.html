@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="shortcut icon" href="https://www.google.com/s2/favicons?sz=64&domain=colourlovers.com/" />
+	<title>Colour Explorer - Simple Grid</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe" crossorigin="anonymous">
+	<script type="module" src="https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL" crossorigin="anonymous"></script>
+	<link rel="stylesheet" href="styles.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Iosevka/6.0.0/iosevka/iosevka.min.css">
+	<style>
+		body{font-family: "Iosevka Web", ui-monospace, monospace;}
+		td{font-size: 0.8rem; vertical-align: top;}
+
+		/* Tile appearance is driven by CSS variables that JS sets once on #colourData */
+		#colourData .colour {
+			margin: var(--tile-margin, 5px);
+			rotate: var(--tile-rotate, 0deg);
+			background: var(--tile-bg, #f1f1f1);
+			border-radius: var(--tile-radius, 0);
+			border-right: 0;
+			border-bottom: 0;
+		}
+		#colourData.has-border .colour {
+			border-right: 1px solid #999;
+			border-bottom: 1px solid #000;
+		}
+		#colourData .spanForcolour {
+			display: block;
+			border-radius: var(--tile-radius, 0);
+			padding: var(--tile-padding, 5px);
+		}
+
+		/* Display mode: data-text is "", "info" or "name" */
+		#colourData:not([data-text="info"]) .spanForcolourTextInfo,
+		#colourData:not([data-text="name"]) .spanForcolourTextList {
+			display: none;
+		}
+
+		/* CHANGE (2)/(3): side-by-side layout.
+		   JS sets data-side="true" on #colourData for the 'List & info' and
+		   'List & name' modes. Making the tile's inner wrapper (.empty) a flex row
+		   puts the swatch and the text block next to each other instead of stacked. */
+		#colourData[data-side="true"] .empty {
+			display: flex;
+			flex-direction: row;
+			align-items: flex-start;   /* info text lines up with the top of the swatch */
+			gap: 10px;                 /* space between swatch and info */
+		}
+		/* Stop the swatch being squashed when the info text is long */
+		#colourData[data-side="true"] .spanForcolour {
+			flex: 0 0 auto;
+		}
+		/* CHANGE (3): in 'List & name' mode the name is a single line, so centre it
+		   vertically against the swatch rather than leaving it at the top. */
+		#colourData[data-side="true"][data-text="name"] .empty {
+			align-items: center;
+		}
+		/* Remove the list's default bottom margin so the text sits flush with the swatch top */
+		#colourData[data-side="true"] .spanForcolourTextInfo ul {
+			margin: 0;
+		}
+	</style>
+</head>
+
+<body>
+<div class="container-fluid">
+	<hr>
+	<h1>Colour Explorer - Simple Grid</h1>
+	<nav aria-label="breadcrumb" style="border-bottom:1px solid #ccc; border-top:1px solid #ccc; margin-bottom: 10px;">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a class="breadcrumb-link" href="https://static-rabbit.github.io/">Home</a>
+			</li>
+			<li class="breadcrumb-divider">/</li>
+			<li class="breadcrumb-item">
+				<a class="breadcrumb-link" href="#">Colour Explorer - Grid</a>
+			</li>
+		</ol>
+	</nav>
+	<p>Explore colours from a range of sources - uses the <a href="https://github.com/meodai/color-name-api">Color Name API</a> developed by <a href="https://github.com/meodai">meodai</a> / <a href="https://elastiq.ch/">David Aerne</a> (who wrote <a href="https://www.color.pizza/">color.pizza</a> and <a href="https://names.color.pizza/">names.color.pizza</a>).</p>
+	<p>This is the simple grid version of the colour explorer - there's also a <a href="colour-grid.html">colour grid</a> and a <a href="colour-table.html">table version</a>.</p>
+	<hr>
+	<div class="row">
+		<div class="col-2">
+			<div class="sticky-top">
+				<div id="panelContainer"></div>
+			</div>
+		</div>
+		<div class="col-10 mt-3" id="mainContent">
+			<!-- Information about the chosen list. JavaScript fills these in. -->
+			<ul id="listData">
+				<li>Click a colour to perform the action chosen below</li>
+				<li id="currentList"></li>
+				<li id="currentListDescription"></li>
+				<li id="currentListSource"></li>
+			</ul>
+			<hr>
+			Click action:
+			<div class="form-field">
+				<input class="radio" name="radios" type="radio" id="clickCopy" checked />
+				<label for="clickCopy">Copy Hex value</label>
+			</div>
+			<div class="form-field">
+				<input class="radio" name="radios" type="radio" id="clickPizza" />
+				<label for="clickPizza">Visit entry on names.color.pizza</label>
+			</div>
+			<hr>
+			<div class="flex1 flex1-wrap" id="colourData"></div>
+		</div>
+	</div>
+	<hr>
+	<p><a href="https://getbootstrap.com/" rel="nofollow">Bootstrap</a> | <a href="https://tweakpane.org/" rel="nofollow">Tweakpane</a></p>
+	<hr>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer" style="z-index:1100;"></div>
+
+<script type="module">
+
+import { Pane } from "https://esm.sh/tweakpane";
+
+// ###############################################################
+// Constants and DOM references (each element is looked up once)
+// ###############################################################
+
+const $ = (id) => document.getElementById(id);
+
+const divColourData = $('colourData');
+const currentList = $('currentList');
+const currentListDescription = $('currentListDescription');
+const currentListSource = $('currentListSource');
+
+const API = "https://api.color.pizza/v1/";
+const HEADERS = { "X-Referrer": "colour-explorer https://static-rabbit.github.io/projects/colour-explorers/colour-grid.html" };
+
+const SETTINGS = {
+	filterList: '',
+	padding: 15,
+	margin: 0,
+	rotate: 0,
+	border: false,
+	borderRadius: 0,
+	design: 'html',
+	// CHANGE (1): two new settings backing the Tweakpane sort controls.
+	// `sort` holds the name of the colour attribute to sort by (see SORTERS below);
+	// `sortOrder` is 'asc' or 'desc'.
+	sort: 'name',
+	sortOrder: 'asc'
+};
+
+
+// CHANGE (1): comparison functions, one per sortable attribute.
+// Each returns negative / zero / positive, as Array.prototype.sort expects (ascending).
+// Descending order is produced later by multiplying the result by -1.
+const SORTERS = {
+	name:      (a, b) => a.name.localeCompare(b.name),   // alphabetical, locale-aware
+	hex:       (a, b) => a.hex.localeCompare(b.hex),     // hex strings are all the same length, so string order = numeric order
+	luminance: (a, b) => Number(a.luminance) - Number(b.luminance) // numeric, in case the API sends strings
+};
+
+// ###############################################################
+// Helpers
+// ###############################################################
+
+const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ESCAPES[char]);
+
+const debounce = (fn, ms) => {
+	let timer;
+	return (...args) => {
+		clearTimeout(timer);
+		timer = setTimeout(() => fn(...args), ms);
+	};
+};
+
+async function fetchJson(url, signal) {
+	const response = await fetch(url, { headers: HEADERS, signal });
+	if (!response.ok) throw new Error(`HTTP ${response.status}`);
+	return response.json();
+}
+
+// ###############################################################
+// Appearance: set CSS variables ONCE on the container.
+// The stylesheet applies them to every tile, so the cost does not
+// grow with the number of colours.
+// ###############################################################
+
+function applyStyles() {
+	const { style, classList } = divColourData;
+	style.setProperty('--tile-padding', `${SETTINGS.padding}px`);
+	style.setProperty('--tile-margin', `${SETTINGS.margin}px`);
+	style.setProperty('--tile-rotate', `${SETTINGS.rotate}deg`);
+	style.setProperty('--tile-radius', `${SETTINGS.borderRadius}px`);
+	classList.toggle('has-border', SETTINGS.border);
+}
+
+// ###############################################################
+// Colour lists (populates the `design` dropdown)
+// ###############################################################
+
+const buildDesignOptions = ({ availableColorNameLists, listDescriptions }) =>
+	Object.fromEntries(
+		availableColorNameLists.map((key) => {
+			const { title, colorCount } = listDescriptions[key];
+			return [`${title} (${colorCount.toLocaleString()})`, key];
+		})
+	);
+
+let designOptions;
+let listDescriptions = {}; // title, description, source for each list, keyed by list name
+try {
+	const data = await fetchJson(API + "lists/");
+	designOptions = buildDesignOptions(data);
+	listDescriptions = data.listDescriptions;
+} catch (error) {
+	console.error("Failed to load colour lists:", error);
+	designOptions = { 'HTML': 'html' };
+	SETTINGS.design = 'html';
+}
+
+/**
+ * Shows the title, description and source link of the chosen list.
+ * textContent (not innerHTML) is used so any HTML in the API data is shown as text.
+ */
+function updateListData(selected) {
+	const info = listDescriptions[selected];
+	if (!info) {
+		currentList.textContent = "";
+		currentListDescription.textContent = "";
+		currentListSource.replaceChildren();
+		return;
+	}
+
+	const { title, description, source } = info;
+	currentList.textContent = `List Name: ${title}`;
+	currentListDescription.textContent = `List Description: ${description}`;
+
+	const link = document.createElement("a");
+	link.href = source;
+	link.target = "_blank";
+	link.rel = "noopener noreferrer";
+	link.textContent = source;
+	currentListSource.replaceChildren("List Source: ", link);
+}
+
+// ###############################################################
+// Colours: fetch, sort, build HTML (cached), render
+// ###############################################################
+
+function toTitleCase(str) {
+	return str.replace(
+		/\w\S*/g,
+		text => text.charAt(0).toUpperCase() + text.substring(1).toLowerCase()
+	);
+}
+
+const renderColours = (colours) => colours.map(({ name, hex, luminance, bestContrast }) => {
+	const n = escapeHtml(name);
+	const h = escapeHtml(hex);
+	const l = escapeHtml(luminance);
+	const c = escapeHtml(bestContrast);
+	return `<div class="colour row" title="${`${n} ${h} ${l}`.toLowerCase()}" data-hex="${h}" data-name="${n}">` +
+		`<div class="empty">` +
+			`<span class="spanForcolour" style="background-color:${h}; color:${c};">${toTitleCase(n)}</span>` +
+		`</div>` +
+	`</div>`;
+}).join('');
+
+// CHANGE (1): the cache is now split in two.
+// 1. colourCache holds the RAW colour arrays, one per list. The network is hit once per list,
+//    and changing the sort never triggers a new request.
+// 2. htmlCache holds finished HTML keyed by list + sort field + sort order, so flipping back
+//    to a combination already seen needs neither a re-sort nor a rebuild.
+const colourCache = new Map(); // list name -> array of colour objects (as returned by the API)
+const htmlCache = new Map();   // "list|sort|order" -> finished HTML
+
+/**
+ * CHANGE (4): returns a NEW, randomly ordered copy of the array (Fisher-Yates shuffle).
+ *
+ * How it works: walk backwards from the last position to the second.
+ * At each position i, pick a random position j anywhere from 0 to i (inclusive)
+ * and swap the two items. Everything after i is then "settled", and every possible
+ * ordering is equally likely. (Using .sort(() => Math.random() - 0.5) instead looks
+ * shorter but gives a biased shuffle, which is why it is avoided here.)
+ *
+ * slice() copies first so the array held in colourCache is never reordered.
+ */
+function shuffleColours(colours) {
+	const shuffled = colours.slice();
+	for (let i = shuffled.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1)); // random index from 0..i
+		[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]; // swap the pair
+	}
+	return shuffled;
+}
+
+/**
+ * Returns a NEW array sorted by the chosen attribute and direction.
+ * slice() copies first, because Array.sort works in place and we must not
+ * reorder the array held in colourCache.
+ */
+function sortColours(colours, sortKey, sortOrder) {
+	// CHANGE (4): 'random' is not a comparison, so it does not live in SORTERS.
+	// It is handled first and returns early; the ascending/descending order is
+	// meaningless for a shuffle, so sortOrder is ignored.
+	if (sortKey === 'random') return shuffleColours(colours);
+
+	const compare = SORTERS[sortKey] ?? SORTERS.name;
+	const direction = sortOrder === 'desc' ? -1 : 1; // -1 flips the comparison for descending
+	return colours.slice().sort((a, b) => compare(a, b) * direction);
+}
+
+async function getColourHtml(list, signal) {
+	const { sort, sortOrder } = SETTINGS;
+	const key = `${list}|${sort}|${sortOrder}`;
+
+	// CHANGE (4): a random order must NOT be cached. If it were, choosing 'Random'
+	// a second time would just replay the first shuffle. So for 'random' we skip the
+	// htmlCache entirely and build fresh HTML on every call. The raw colours are still
+	// cached, so there is no extra network request.
+	const cacheable = sort !== 'random';
+
+	if (!cacheable || !htmlCache.has(key)) {
+		if (!colourCache.has(list)) {
+			const { colors } = await fetchJson(`${API}?noduplicates=true&list=${encodeURIComponent(list)}`, signal);
+			colourCache.set(list, colors);
+		}
+		const html = renderColours(sortColours(colourCache.get(list), sort, sortOrder));
+		if (!cacheable) return html; // fresh shuffle: hand it back without storing it
+		htmlCache.set(key, html);
+	}
+	return htmlCache.get(key);
+}
+
+// ###############################################################
+// Filter (the Tweakpane text box is wired up below)
+// ###############################################################
+
+let filterInput; // set once the pane exists
+
+function applyFilter() {
+	const term = filterInput.value.trim().toLowerCase();
+	for (const tile of divColourData.querySelectorAll('.colour')) {
+		tile.classList.toggle('hidden', term !== '' && !tile.title.includes(term));
+	}
+}
+
+// ###############################################################
+// Showing a list
+// ###############################################################
+
+let controller; // lets a newer selection cancel an older, slower request
+
+async function displayDesign(list) {
+	controller?.abort();
+	controller = new AbortController();
+	const { signal } = controller;
+
+	try {
+		const html = await getColourHtml(list, signal);
+		if (signal.aborted) return; // superseded while we were waiting
+		divColourData.innerHTML = html;
+		applyFilter(); // keep any active filter when the list changes
+	} catch (error) {
+		if (error.name === 'AbortError') return; // expected: we cancelled it ourselves
+		console.error("Failed to load colours for the selected list:", error);
+		if (!signal.aborted) {
+			divColourData.innerHTML = "<p class='text-danger'>Failed to load colours for the selected list.</p>";
+		}
+	}
+}
+
+// ###############################################################
+// Tweakpane controls
+// ###############################################################
+
+const pane = new Pane({ expanded: true, container: $('panelContainer') });
+
+const folderGeneral = pane.addFolder({ title: '🟡 General', expanded: true });
+
+const filterBinding = folderGeneral.addBinding(SETTINGS, 'filterList', { label: 'filter' });
+filterInput = filterBinding.element.querySelector('input');
+filterInput.addEventListener('input', debounce(applyFilter, 150));
+
+[
+	['padding',          { min: 0,  max: 250,  step: 1, label: 'padding' }],
+	['margin',           { min: 0,  max: 250,  step: 1, label: 'margin' }],
+	['rotate',           { min: 0,  max: 360,  step: 1, label: 'rotate' }],
+	['border',           {}],
+	['borderRadius',     { min: 0,  max: 20,  step: 1, label: 'border-radius' }]
+].forEach(([key, options]) => folderGeneral.addBinding(SETTINGS, key, options));
+
+// One listener on the folder catches a change from any control inside it
+folderGeneral.on('change', applyStyles);
+
+const folderDisplay = pane.addFolder({ title: '🟡 Display Options', expanded: true });
+
+folderDisplay.addBinding(SETTINGS, 'design', { label: 'design', options: designOptions })
+	.on('change', () => {
+		updateListData(SETTINGS.design);
+		displayDesign(SETTINGS.design);
+	});
+
+// CHANGE (1): the 'Sort' select (Name / Hex / Lum) plus an Ascending / Descending select.
+// Option values match the keys of SORTERS, so they are used directly to look up the comparison.
+// Either change just re-runs displayDesign(): the raw colours are already cached, so it only
+// re-sorts, rebuilds the HTML (or reuses it from htmlCache) and re-applies any active filter.
+const redisplay = () => displayDesign(SETTINGS.design);
+
+// CHANGE (4): 'Random' is the 4th option. Its value, 'random', is handled specially in
+// sortColours() rather than being looked up in SORTERS.
+const sortBinding = folderDisplay.addBinding(SETTINGS, 'sort', {
+	label: 'sort',
+	options: { 'Name': 'name', 'Hex': 'hex', 'Lum': 'luminance', 'Random': 'random' }
+});
+
+const orderBinding = folderDisplay.addBinding(SETTINGS, 'sortOrder', {
+	label: 'order',
+	options: { 'Ascending': 'asc', 'Descending': 'desc' }
+}).on('change', redisplay);
+
+// CHANGE (4): ascending/descending means nothing for a shuffle, so grey out the
+// 'order' control while 'Random' is selected, and re-enable it for the other sorts.
+const updateOrderState = () => { orderBinding.disabled = SETTINGS.sort === 'random'; };
+
+sortBinding.on('change', () => {
+	updateOrderState();
+	redisplay();
+});
+updateOrderState(); // set the correct state on first load
+
+// ###############################################################
+// Toast helpers
+// ###############################################################
+
+// Full date and time, down to the second, in the viewer's own time zone
+const formatTimestamp = (date) => date.toLocaleString('en-GB', {
+	dateStyle: 'full',
+	timeStyle: 'long'
+});
+
+// Bootstrap is loaded as a module, so there may be no global `bootstrap`.
+// Import its Toast class once, on first use, and fall back to a manual
+// show/hide if it cannot be found.
+let ToastClass;
+async function getToastClass() {
+	if (ToastClass !== undefined) return ToastClass;
+	try {
+		const mod = await import('https://cdn.jsdelivr.net/npm/bootstrap@6.0.0-alpha.1/dist/js/bootstrap.bundle.min.js');
+		ToastClass = mod.Toast ?? mod.default?.Toast ?? window.bootstrap?.Toast ?? null;
+	} catch {
+		ToastClass = window.bootstrap?.Toast ?? null;
+	}
+	return ToastClass;
+}
+
+async function showToast({ title, body, variant = 'success', delay = 5000 }) {
+	const el = document.createElement('div');
+	el.className = 'toast';
+	el.setAttribute('role', variant === 'danger' ? 'alert' : 'status');
+	el.setAttribute('aria-live', variant === 'danger' ? 'assertive' : 'polite');
+	el.setAttribute('aria-atomic', 'true');
+	el.innerHTML =
+		`<div class="toast-header">` +
+			`<span class="rounded me-2 bg-${variant}" style="width:1em;height:1em;display:inline-block;"></span>` +
+			`<strong class="me-auto">${title}</strong>` +
+			`<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>` +
+		`</div>` +
+		`<div class="toast-body">${body}</div>`;
+	$('toastContainer').append(el);
+
+	// Remove the element once hidden so repeated clicks don't pile up in the DOM
+	el.addEventListener('hidden.bs.toast', () => el.remove());
+
+	const Toast = await getToastClass();
+	if (Toast) {
+		Toast.getOrCreateInstance(el, { delay }).show();
+	} else {
+		el.classList.add('show');
+		el.querySelector('.btn-close').addEventListener('click', () => el.remove());
+		setTimeout(() => el.remove(), delay);
+	}
+}
+
+// ###############################################################
+// Tile click: copy the hex value, or visit names.color.pizza,
+// depending on which 'radios' option is ticked.
+// One delegated listener on the container covers every tile, including
+// tiles that are replaced whenever the list or sort changes.
+// ###############################################################
+
+divColourData.addEventListener('click', async (event) => {
+	const tile = event.target.closest('.colour');
+	if (!tile) return;
+
+	const hex = tile.dataset.hex;
+	const action = document.querySelector('input[name="radios"]:checked')?.id ?? 'clickCopy';
+
+	if (action === 'clickPizza') {
+		window.location.assign(`https://names.color.pizza/color/${hex}`);
+		return;
+	}
+
+	try {
+		await navigator.clipboard.writeText(hex);
+		const name = toTitleCase(tile.dataset.name ?? '');
+		showToast({
+			title: 'Copied to clipboard',
+			body: `<div><b>${escapeHtml(name)}</b> (${escapeHtml(hex)}) has been copied.</div>` +
+				`<small class="text-body-secondary">${formatTimestamp(new Date())}</small>`
+		});
+	} catch (error) {
+		// Clipboard API needs a secure context (https or localhost) and may need permission
+		console.error('Failed to copy hex value:', error);
+		showToast({ title: 'Copy failed', body: `Could not copy ${escapeHtml(hex)} to the clipboard.`, variant: 'danger' });
+	}
+});
+
+// ###############################################################
+// First load
+// ###############################################################
+
+applyStyles();
+updateListData(SETTINGS.design);
+await displayDesign(SETTINGS.design);
+
+</script>
+
+</body>
+
+</html>
